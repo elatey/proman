@@ -23,7 +23,7 @@ export function Home() {
   const [cards, setCards] = useLocal<string[]>('proman.homecards', ['recents', 'agenda', 'mywork', 'assigned', 'reminders', 'comments', 'lineup']);
   return (
     <div className="h-full overflow-y-auto bg-[var(--subtle)]">
-      <div className="h-12 flex items-center px-6 border-b bg-[var(--panel)]">
+      <div className="h-12 flex items-center px-4 sm:px-6 border-b bg-[var(--panel)]">
         <span className="font-semibold">Home</span>
         <div className="flex-1" />
         <Popover align="end" width={240} trigger={<button className="btn btn-outline !py-1"><Settings2 size={14} /> Manage cards</button>}>
@@ -32,9 +32,9 @@ export function Home() {
           </div>
         </Popover>
       </div>
-      <div className="max-w-[1400px] mx-auto p-6">
-        <h1 className="text-2xl font-bold mb-5">{greeting()}, {user.name.split(' ')[0]}</h1>
-        <div className="grid grid-cols-1 xl:grid-cols-2 gap-5">
+      <div className="max-w-[1400px] mx-auto p-4 sm:p-6">
+        <h1 className="text-xl sm:text-2xl font-bold mb-4 sm:mb-5">{greeting()}, {user.name.split(' ')[0]}</h1>
+        <div className="grid grid-cols-1 xl:grid-cols-2 gap-4 sm:gap-5">
           {cards.includes('lineup') && <LineUp />}
           {cards.includes('recents') && <Recents />}
           {cards.includes('agenda') && <Agenda />}

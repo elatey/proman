@@ -119,7 +119,7 @@ export function BulkBar({ ids, clear }: { ids: string[]; clear: () => void }) {
   const first = tasks[ids[0]];
   const each = (p: (t: Task) => Partial<Task>) => ids.forEach((id) => tasks[id] && s.updateTask(id, p(tasks[id])));
   return (
-    <div className="absolute bottom-5 left-1/2 -translate-x-1/2 z-40 flex items-center gap-1 rounded-xl bg-[#1c1c22] text-white px-3 py-2 shadow-2xl text-[13px] animate-pop">
+    <div className="absolute bottom-5 left-1/2 -translate-x-1/2 z-40 flex items-center gap-1 rounded-xl bg-[#1c1c22] text-[#f2f2f2] px-3 py-2 shadow-2xl text-[13px] animate-pop max-w-[calc(100vw-16px)] overflow-x-auto whitespace-nowrap">
       <span className="font-medium px-1">{ids.length} selected</span>
       <span className="w-px h-5 bg-white/20 mx-1" />
       {first && <StatusPicker listId={first.listId} value={undefined} onChange={(sid) => { const name = statusesForList(first.listId).find((x) => x.id === sid)?.name; each((t) => ({ status: statusesForList(t.listId).find((x) => x.name === name)?.id || t.status })); }} trigger={<button className="px-2 py-1 rounded hover:bg-white/10">Status</button>} />}

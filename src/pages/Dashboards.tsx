@@ -5,7 +5,7 @@ import { ResponsiveContainer, PieChart, Pie, Cell, BarChart, Bar, XAxis, YAxis, 
 import { addDays, format, startOfDay, isBefore, isSameDay, startOfWeek, differenceInCalendarDays } from 'date-fns';
 import { useStore, getState, listsIn, statusOf, isClosed, memberName, pushRecent, locationName } from '../lib/store';
 import { applyFilters } from '../lib/filters';
-import { Popover, MenuList, Modal, Empty, ProgressBar, StatusIcon, Avatar } from '../components/ui';
+import { Popover, MenuList, Modal, Empty, ProgressBar, StatusIcon, Avatar, useIsMobile } from '../components/ui';
 import { RichEditor } from '../components/RichEditor';
 import { toEmbedUrl } from '../components/views/EmbedView';
 import { TaskLine } from './Home';
@@ -39,8 +39,8 @@ export default function Dashboards() {
   const list = Object.values(dashes).sort((a, b) => (b.updated_at || '').localeCompare(a.updated_at || ''));
   return (
     <div className="h-full overflow-y-auto">
-      <div className="max-w-5xl mx-auto p-8">
-        <div className="flex items-center"><h1 className="text-2xl font-bold flex-1">Dashboards</h1>
+      <div className="max-w-5xl mx-auto p-4 sm:p-8">
+        <div className="flex flex-wrap items-center gap-2"><h1 className="text-2xl font-bold flex-1">Dashboards</h1>
           <button className="btn btn-primary" onClick={() => { const x = getState().create('dashboard', { name: 'New Dashboard', widgets: [], location: null }); nav('/dashboard/' + x.id); }}><Plus size={15} /> New Dashboard</button></div>
         <p className="text-[var(--muted)] mt-1">Real-time charts and reports across your Workspace.</p>
         <div className="grid grid-cols-1 md:grid-cols-3 gap-3 mt-6">
@@ -62,6 +62,7 @@ export function DashboardBoard({ dash, header }: { dash: Dashboard; header?: boo
   const [adding, setAdding] = useState(false);
   const [editing, setEditing] = useState<Widget | null>(null);
   const [drag, setDrag] = useState<string | null>(null);
+  const mobile = useIsMobile(); // phones: number cards two per row, charts full width
   const save = (widgets: Widget[]) => getState().update('dashboard', dash.id, { widgets });
   const add = (type: WidgetType) => {
     const meta = WIDGETS.find((w) => w.type === type)!;
@@ -71,9 +72,9 @@ export function DashboardBoard({ dash, header }: { dash: Dashboard; header?: boo
     if (['calc', 'embed', 'burndown'].includes(type)) setEditing(w);
   };
   return (
-    <div className="p-6">
+    <div className="p-3 sm:p-6">
       <div className="flex items-center gap-2 mb-5">
-        {header ? <input className="text-2xl font-bold bg-transparent outline-none flex-1" defaultValue={dash.name} onBlur={(e) => getState().update('dashboard', dash.id, { name: e.target.value || 'Dashboard' })} /> : <div className="flex-1" />}
+        {header ? <input className="text-xl sm:text-2xl font-bold bg-transparent outline-none flex-1 min-w-0" defaultValue={dash.name} onBlur={(e) => getState().update('dashboard', dash.id, { name: e.target.value || 'Dashboard' })} /> : <div className="flex-1" />}
         <button className="btn btn-primary" onClick={() => setAdding(true)}><Plus size={15} /> Add widget</button>
         {header && <Popover align="end" trigger={<button className="icon-btn"><MoreHorizontal size={16} /></button>}>
           {(close) => <MenuList close={close} items={[{ label: 'Delete dashboard', icon: <Trash2 size={14} />, danger: true, onClick: () => { if (confirm('Delete dashboard?')) { getState().remove('dashboard', dash.id); nav('/dashboards'); } } }]} />}
@@ -83,7 +84,7 @@ export function DashboardBoard({ dash, header }: { dash: Dashboard; header?: boo
         {dash.widgets.map((w) => (
           <div key={w.id} draggable onDragStart={() => setDrag(w.id)} onDragOver={(e) => e.preventDefault()}
             onDrop={() => { if (!drag || drag === w.id) return; const list = [...dash.widgets]; const from = list.findIndex((x) => x.id === drag); const [m] = list.splice(from, 1); list.splice(list.findIndex((x) => x.id === w.id), 0, m); save(list); setDrag(null); }}
-            className="card flex flex-col overflow-hidden group" style={{ gridColumn: `span ${Math.min(12, w.w)}`, gridRow: `span ${w.h}` }}>
+            className="card flex flex-col overflow-hidden group" style={{ gridColumn: `span ${mobile ? (w.w <= 3 ? 6 : 12) : Math.min(12, w.w)}`, gridRow: `span ${w.h}` }}>
             <div className="flex items-center gap-1 px-4 pt-3 pb-1">
               <GripVertical size={13} className="text-[var(--faint)] opacity-0 group-hover:opacity-100 cursor-grab -ml-2" />
               <span className="font-semibold text-[13.5px] flex-1 truncate">{w.title}</span>
@@ -173,7 +174,7 @@ function useWidgetTasks(w: Widget): Task[] {
 }
 
 function Big({ n, label, color }: { n: React.ReactNode; label: string; color?: string }) {
-  return <div className="h-full flex flex-col items-center justify-center"><div className="text-4xl font-bold tabular-nums" style={{ color }}>{n}</div><div className="text-xs text-[var(--muted)] mt-1">{label}</div></div>;
+  return <div className="h-full flex flex-col items-center justify-center text-center"><div className="text-2xl sm:text-4xl font-bold tabular-nums" style={{ color }}>{n}</div><div className="text-xs text-[var(--muted)] mt-1">{label}</div></div>;
 }
 
 function WidgetBody({ w, onText }: { w: Widget; onText: (t: string) => void }) {

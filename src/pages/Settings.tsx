@@ -24,13 +24,14 @@ export default function Settings() {
   const { tab = 'profile' } = useParams();
   const nav = useNavigate();
   return (
-    <div className="h-full flex">
-      <div className="w-56 shrink-0 border-r bg-[var(--sidebar)] p-2">
-        <div className="h-10 flex items-center px-2 font-semibold">Settings</div>
-        {TABS.map((t) => <button key={t.k} onClick={() => nav('/settings/' + t.k)} className={cn('menu-item', tab === t.k && 'bg-[var(--hover)] font-medium')}><t.icon size={14} />{t.label}</button>)}
+    <div className="h-full flex flex-col md:flex-row">
+      {/* Phones: settings sections become a sideways-scrolling tab row */}
+      <div className="md:w-56 shrink-0 border-b md:border-b-0 md:border-r bg-[var(--sidebar)] p-2 flex md:block gap-1 overflow-x-auto">
+        <div className="hidden md:flex h-10 items-center px-2 font-semibold">Settings</div>
+        {TABS.map((t) => <button key={t.k} onClick={() => nav('/settings/' + t.k)} className={cn('menu-item !w-auto md:!w-full whitespace-nowrap coarse:py-2.5', tab === t.k && 'bg-[var(--hover)] font-medium')}><t.icon size={14} />{t.label}</button>)}
       </div>
-      <div className="flex-1 overflow-y-auto">
-        <div className="max-w-3xl mx-auto p-8">
+      <div className="flex-1 min-h-0 overflow-y-auto">
+        <div className="max-w-3xl mx-auto p-4 sm:p-8">
           {tab === 'profile' && <Profile />}
           {tab === 'appearance' && <Appearance />}
           {tab === 'workspace' && <WorkspaceTab />}
@@ -162,9 +163,9 @@ function People() {
         <div className="card p-5 mb-6">
           <div className="font-semibold mb-1">Invite people</div>
           <p className="text-xs text-[var(--muted)] mb-3">Enter one or more emails. Invited people join automatically when they sign up or sign in at <b>{appUrl}</b> with that email.</p>
-          <div className="flex gap-2">
+          <div className="flex flex-col sm:flex-row gap-2">
             <input className="input" placeholder="name@company.com, other@company.com" value={email} onChange={(e) => setEmail(e.target.value)} onKeyDown={(e) => e.key === 'Enter' && invite()} />
-            <select className="input !w-32" value={role} onChange={(e) => setRole(e.target.value as Role)}><option value="member">Member</option><option value="admin">Admin</option><option value="guest">Guest</option></select>
+            <select className="input sm:!w-32" value={role} onChange={(e) => setRole(e.target.value as Role)}><option value="member">Member</option><option value="admin">Admin</option><option value="guest">Guest</option></select>
             <button className="btn btn-primary" onClick={invite} disabled={busy}><Mail size={14} /> Invite</button>
           </div>
           <div className="flex gap-2 mt-2">

@@ -1,12 +1,12 @@
 import { useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
-  X, ChevronRight, MoreHorizontal, Link2, Copy, Trash2, Archive, Calendar, Flag, Users, Hourglass, Timer, Tag as TagIcon, CircleDot, Plus, ChevronDown, Check,
+  X, ChevronRight, ChevronLeft, MessageSquareText, MoreHorizontal, Link2, Copy, Trash2, Archive, Calendar, Flag, Users, Hourglass, Timer, Tag as TagIcon, CircleDot, Plus, ChevronDown, Check,
   Repeat, Play, Square, GripVertical, Paperclip, Download, Maximize2, Minimize2, Star, Share2, ArrowRightLeft, LayoutTemplate, Minus, ListChecks, Eye, Globe, Target, Ban, AlertTriangle, Link as LinkIcon, Diamond, Bug, Lightbulb, MessageSquareQuote, CheckCircle2, Hash,
 } from 'lucide-react';
 import { useStore, getState, statusesForList, breadcrumb, isClosed, statusOf, clickApp, nextDate } from '../../lib/store';
 import {
-  StatusPicker, StatusIcon, AssigneePicker, DatePicker, PriorityPicker, PriorityFlag, TagPicker, TagChip, Popover, MenuList, InlineEdit, Checkbox, ProgressBar, Avatar, AvatarStack, Modal, Confirm, useNow, DatePanel,
+  StatusPicker, StatusIcon, AssigneePicker, DatePicker, PriorityPicker, PriorityFlag, TagPicker, TagChip, Popover, MenuList, InlineEdit, Checkbox, ProgressBar, Avatar, AvatarStack, Modal, Confirm, useNow, DatePanel, useIsMobile, isMobileNow,
 } from '../ui';
 import { RichEditor } from '../RichEditor';
 import { FieldValue } from './FieldValue';
@@ -29,13 +29,15 @@ export const TASK_TYPES = [
 
 export function TaskModal({ id, onClose, page }: { id: string; onClose: () => void; page?: boolean }) {
   const task = useStore((s) => s.data.task[id]);
+  const mobile = useIsMobile();
   const [full, setFull] = useState(!!page);
   if (!task) return null;
-  const body = <TaskBody task={task} onClose={onClose} full={full} setFull={page ? undefined : setFull} />;
+  const body = <TaskBody task={task} onClose={onClose} full={full || mobile} setFull={page || mobile ? undefined : setFull} />;
   if (page) return <div className="h-full">{body}</div>;
   return (
     <div className="fixed inset-0 z-[800] flex items-center justify-center bg-black/40 animate-fade" onMouseDown={onClose}>
-      <div className={cn('pop flex flex-col overflow-hidden animate-pop', full ? 'w-screen h-screen rounded-none' : 'w-[min(1240px,96vw)] h-[92vh]')} onMouseDown={(e) => e.stopPropagation()}>
+      <div className={cn('pop flex flex-col overflow-hidden animate-pop', full || mobile ? 'w-screen h-[100dvh] !rounded-none !border-0' : 'w-[min(1240px,96vw)] h-[92vh]')}
+        style={mobile ? { paddingTop: 'env(safe-area-inset-top)', paddingBottom: 'env(safe-area-inset-bottom)' } : undefined} onMouseDown={(e) => e.stopPropagation()}>
         {body}
       </div>
     </div>
@@ -50,26 +52,29 @@ function TaskBody({ task, onClose, full, setFull }: { task: Task; onClose: () =>
   const parent = task.parentId ? data.task[task.parentId] : null;
   const [del, setDel] = useState(false);
   const [move, setMove] = useState(false);
-  const [showPanel, setShowPanel] = useState(true);
+  const mobile = useIsMobile();
+  const [showPanel, setShowPanel] = useState(!isMobileNow());
+  const commentCount = useStore((st) => Object.values(st.data.comment).filter((c) => c.taskId === task.id).length);
   const { isFav, toggle } = useFavs();
   const up = (p: Partial<Task>) => s.updateTask(task.id, p);
   const tray = useStore((st) => st.tray);
   const copyLink = () => { navigator.clipboard.writeText(location.href.split('#')[0] + '#/task/' + task.id); s.toast('Link copied'); };
 
   return (
-    <div className="flex flex-col h-full min-h-0">
+    <div className="relative flex flex-col h-full min-h-0">
       {/* header */}
-      <div className="h-12 shrink-0 flex items-center gap-1.5 px-4 border-b text-[13px]">
+      <div className="h-12 shrink-0 flex items-center gap-1.5 px-2 sm:px-4 border-b text-[13px]">
+        {mobile && <button className="icon-btn !w-10 !h-10 shrink-0" aria-label="Close task" onClick={onClose}><ChevronLeft size={20} /></button>}
         <div className="flex items-center gap-1 min-w-0 text-[var(--muted)]">
-          {crumbs.space && <button className="hover:text-[var(--text)] truncate" onClick={() => { onClose(); nav('/space/' + crumbs.space!.id); }}>{crumbs.space.name}</button>}
-          {crumbs.folder && <><ChevronRight size={13} /><button className="hover:text-[var(--text)] truncate" onClick={() => { onClose(); nav('/folder/' + crumbs.folder!.id); }}>{crumbs.folder.name}</button></>}
-          {crumbs.list && <><ChevronRight size={13} /><button className="hover:text-[var(--text)] truncate font-medium text-[var(--text)]" onClick={() => { onClose(); nav('/list/' + crumbs.list!.id); }}>{crumbs.list.name}</button></>}
+          {crumbs.space && !mobile && <button className="hover:text-[var(--text)] truncate" onClick={() => { onClose(); nav('/space/' + crumbs.space!.id); }}>{crumbs.space.name}</button>}
+          {crumbs.folder && !mobile && <><ChevronRight size={13} /><button className="hover:text-[var(--text)] truncate" onClick={() => { onClose(); nav('/folder/' + crumbs.folder!.id); }}>{crumbs.folder.name}</button></>}
+          {crumbs.list && <>{!mobile && <ChevronRight size={13} />}<button className="hover:text-[var(--text)] truncate font-medium text-[var(--text)]" onClick={() => { onClose(); nav('/list/' + crumbs.list!.id); }}>{crumbs.list.name}</button></>}
           {parent && <><ChevronRight size={13} /><button className="hover:text-[var(--text)] truncate" onClick={() => s.openTask(parent.id)}>{parent.name}</button></>}
         </div>
-        <button className="ml-2 inline-flex items-center gap-1 rounded px-1.5 py-0.5 text-xs text-[var(--faint)] hover:bg-[var(--hover)] font-mono" title="Copy task ID" onClick={() => { navigator.clipboard.writeText(shortId(task.id)); s.toast('Task ID copied'); }}><Hash size={11} />{shortId(task.id)}</button>
+        <button className="ml-2 hidden sm:inline-flex items-center gap-1 rounded px-1.5 py-0.5 text-xs text-[var(--faint)] hover:bg-[var(--hover)] font-mono" title="Copy task ID" onClick={() => { navigator.clipboard.writeText(shortId(task.id)); s.toast('Task ID copied'); }}><Hash size={11} />{shortId(task.id)}</button>
         <div className="flex-1" />
         <span className="text-xs text-[var(--faint)] hidden md:inline">Created {task.created_at ? format(new Date(task.created_at), 'MMM d, yyyy') : ''}</span>
-        <Popover align="end" width={320} trigger={<button className="btn btn-ghost !py-1"><Share2 size={14} /> Share</button>}>
+        <Popover align="end" width={320} trigger={<button className="btn btn-ghost !py-1 !px-2 sm:!px-3" aria-label="Share"><Share2 size={14} /> <span className="hidden sm:inline">Share</span></button>}>
           <div className="p-4 space-y-3">
             <div className="font-semibold">Share this task</div>
             <button className="btn btn-outline w-full justify-center" onClick={copyLink}><Link2 size={14} /> Copy private link</button>
@@ -106,13 +111,19 @@ function TaskBody({ task, onClose, full, setFull }: { task: Task; onClose: () =>
           ]} />}
         </Popover>
         {setFull && <button className="icon-btn" onClick={() => setFull(!full)} title={full ? 'Exit full screen' : 'Full screen'}>{full ? <Minimize2 size={15} /> : <Maximize2 size={15} />}</button>}
-        <button className="icon-btn" onClick={() => setShowPanel(!showPanel)} title="Toggle activity"><MessageIcon /></button>
-        <button className="icon-btn" onClick={onClose}><X size={17} /></button>
+        {mobile ? (
+          <button className="icon-btn !w-auto px-2 gap-1 !h-10 relative" onClick={() => setShowPanel(true)} aria-label="Comments and activity"><MessageSquareText size={18} />{commentCount > 0 && <span className="text-xs font-medium">{commentCount}</span>}</button>
+        ) : (
+          <>
+            <button className="icon-btn" onClick={() => setShowPanel(!showPanel)} title="Toggle activity"><MessageIcon /></button>
+            <button className="icon-btn" onClick={onClose}><X size={17} /></button>
+          </>
+        )}
       </div>
 
       <div className="flex-1 min-h-0 flex">
         <div className="flex-1 min-w-0 overflow-y-auto">
-          <div className="max-w-[880px] mx-auto px-8 py-6">
+          <div className="max-w-[880px] mx-auto px-4 sm:px-8 py-4 sm:py-6">
             {task.archived && <div className="mb-3 rounded-md bg-amber-50 dark:bg-amber-950/40 text-amber-700 dark:text-amber-300 text-sm px-3 py-2 flex items-center gap-2"><Archive size={14} /> This task is archived. <button className="underline" onClick={() => up({ archived: false })}>Restore</button></div>}
             <div className="flex items-center gap-2 mb-3">
               <TypePicker task={task} />
@@ -133,7 +144,16 @@ function TaskBody({ task, onClose, full, setFull }: { task: Task; onClose: () =>
             <Attachments task={task} />
           </div>
         </div>
-        {showPanel && <div className="w-[400px] shrink-0 border-l flex flex-col min-h-0 bg-[var(--subtle)]"><ActivityPanel task={task} /></div>}
+        {showPanel && !mobile && <div className="w-[400px] shrink-0 border-l flex flex-col min-h-0 bg-[var(--subtle)]"><ActivityPanel task={task} /></div>}
+        {showPanel && mobile && (
+          <div className="absolute inset-0 z-20 flex flex-col bg-[var(--subtle)] animate-slide">
+            <div className="h-12 shrink-0 flex items-center gap-2 px-2 border-b bg-[var(--panel)]">
+              <button className="icon-btn !w-10 !h-10" aria-label="Back to task" onClick={() => setShowPanel(false)}><ChevronLeft size={20} /></button>
+              <span className="font-semibold truncate">{task.name}</span>
+            </div>
+            <ActivityPanel task={task} />
+          </div>
+        )}
       </div>
       <Confirm open={del} onClose={() => setDel(false)} title="Delete task?" body={`“${task.name}” and its subtasks will be deleted.`} onConfirm={() => { s.deleteTask(task.id); onClose(); }} />
       {move && <MoveTaskModal task={task} onClose={() => setMove(false)} />}
@@ -173,7 +193,7 @@ function SummaryChips({ task }: { task: Task }) {
 function Prop({ icon, label, children }: { icon: React.ReactNode; label: string; children: React.ReactNode }) {
   return (
     <div className="flex items-center min-h-[34px]">
-      <div className="w-36 shrink-0 flex items-center gap-2 text-[13px] text-[var(--muted)]">{icon}{label}</div>
+      <div className="w-28 sm:w-36 shrink-0 flex items-center gap-2 text-[13px] text-[var(--muted)]">{icon}{label}</div>
       <div className="flex-1 min-w-0">{children}</div>
     </div>
   );
@@ -402,7 +422,7 @@ function CustomFields({ task }: { task: Task }) {
         <div className="mt-2 rounded-lg border divide-y">
           {shown.map((f) => (
             <div key={f.id} className="flex items-center">
-              <div className="w-48 shrink-0 px-3 py-1.5 text-[13px] text-[var(--muted)] truncate border-r">{f.name}{f.required && <span className="text-red-500"> *</span>}</div>
+              <div className="w-32 sm:w-48 shrink-0 px-3 py-1.5 text-[13px] text-[var(--muted)] truncate border-r">{f.name}{f.required && <span className="text-red-500"> *</span>}</div>
               <div className="flex-1 min-w-0 px-1.5 py-1"><FieldValue f={f} task={task} /></div>
             </div>
           ))}

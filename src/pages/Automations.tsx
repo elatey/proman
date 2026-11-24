@@ -28,8 +28,8 @@ export default function Automations() {
   const list = Object.values(autos).filter((a) => !preset || (a.location.type === defaultLoc.type && a.location.id === defaultLoc.id)).sort((a, b) => (a.created_at || '').localeCompare(b.created_at || ''));
   return (
     <div className="h-full overflow-y-auto">
-      <div className="max-w-4xl mx-auto p-8">
-        <div className="flex items-center"><h1 className="text-2xl font-bold flex-1 flex items-center gap-2"><Zap className="text-amber-500" /> Automations</h1>
+      <div className="max-w-4xl mx-auto p-4 sm:p-8">
+        <div className="flex flex-wrap items-center gap-2"><h1 className="text-2xl font-bold flex-1 flex items-center gap-2"><Zap className="text-amber-500" /> Automations</h1>
           <button className="btn btn-primary" onClick={() => setEditing({ name: '', location: defaultLoc, trigger: { type: 'task_created' }, conditions: [], actions: [{ type: 'change_status' }], enabled: true })}><Plus size={15} /> New automation</button></div>
         <p className="text-[var(--muted)] mt-1">When something happens → (optionally) if conditions match → do these actions.{preset && <> Showing automations for <b>{locationName(defaultLoc)}</b>.</>}</p>
         <div className="mt-6 space-y-2">

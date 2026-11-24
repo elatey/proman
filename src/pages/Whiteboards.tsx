@@ -27,8 +27,8 @@ export default function Whiteboards() {
   const list = Object.values(boards);
   return (
     <div className="h-full overflow-y-auto">
-      <div className="max-w-5xl mx-auto p-8">
-        <div className="flex items-center"><h1 className="text-2xl font-bold flex-1">Whiteboards</h1>
+      <div className="max-w-5xl mx-auto p-4 sm:p-8">
+        <div className="flex flex-wrap items-center gap-2"><h1 className="text-2xl font-bold flex-1">Whiteboards</h1>
           <button className="btn btn-primary" onClick={() => { const w = getState().create('whiteboard', { name: 'Whiteboard', elements: [] }); nav('/whiteboard/' + w.id); }}><Plus size={15} /> New Whiteboard</button></div>
         <p className="text-[var(--muted)] mt-1">Brainstorm, map flows and turn ideas into tasks, together in real time.</p>
         <div className="grid grid-cols-2 md:grid-cols-3 gap-3 mt-6">
@@ -247,7 +247,7 @@ export function WhiteboardCanvas({ board }: { board: Whiteboard }) {
         <button title="Image" className="icon-btn !w-9 !h-9" onClick={addImage}><ImageIcon size={17} /></button>
         <button title="Undo (Ctrl+Z)" className="icon-btn !w-9 !h-9" onClick={undo} disabled={!history.length}><Undo2 size={17} /></button>
       </div>
-      <div className="absolute top-3 left-1/2 -translate-x-1/2 pop flex items-center gap-1 px-2 py-1.5">
+      <div className="absolute top-3 left-1/2 -translate-x-1/2 pop flex items-center gap-1 px-2 py-1.5 max-w-[calc(100%-24px)] overflow-x-auto">
         {[...STICKY, ...STROKE].map((c) => <button key={c} onClick={() => { setColor(c); if (sel.length) commit(els.map((x) => (sel.includes(x.id) ? { ...x, color: x.type === 'sticky' && !STICKY.includes(c) ? x.color : c } : x))); }} className={cn('w-5 h-5 rounded-full border', color === c && 'ring-2 ring-offset-1 ring-[var(--accent)]')} style={{ background: c }} />)}
         {selected.length > 0 && <>
           <span className="w-px h-5 bg-[var(--border)] mx-1" />

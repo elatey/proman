@@ -1,9 +1,9 @@
 import { useEffect, useMemo, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
-import { Search, Plus, Bell, PanelLeftOpen, Square, CheckSquare, FileText, Bell as BellIcon, PenTool, LayoutDashboard, MessagesSquare, X, Clock, Keyboard, Hash, User, Folder, List as ListIcon, Layers } from 'lucide-react';
+import { useNavigate, useLocation, NavLink } from 'react-router-dom';
+import { Search, Plus, Bell, PanelLeftOpen, Square, CheckSquare, FileText, Bell as BellIcon, PenTool, LayoutDashboard, MessagesSquare, X, Clock, Keyboard, Hash, User, Folder, List as ListIcon, Layers, Menu, Home as HomeIcon, Inbox as InboxIcon } from 'lucide-react';
 import { useStore, getState, statusesForList, breadcrumb, isClosed } from '../../lib/store';
 import { Sidebar } from './Sidebar';
-import { Modal, Popover, MenuList, StatusPicker, StatusIcon, AssigneePicker, DatePicker, PriorityPicker, Avatar, useNow, TagPicker, TagChip } from '../ui';
+import { Modal, Popover, MenuList, StatusPicker, StatusIcon, AssigneePicker, DatePicker, PriorityPicker, Avatar, useNow, TagPicker, TagChip, useIsMobile, isMobileNow, type MenuItem } from '../ui';
 import { TaskModal } from '../task/TaskModal';
 import { cn, fmtDuration, stripHtml, PRIORITIES } from '../../lib/utils';
 import { RichEditor } from '../RichEditor';
@@ -14,7 +14,12 @@ export function Shell({ children }: { children: React.ReactNode }) {
   const openTaskId = useStore((s) => s.openTaskId);
   const set = useStore((s) => s.set);
   const nav = useNavigate();
+  const loc = useLocation();
+  const mobile = useIsMobile();
   const [shortcuts, setShortcuts] = useState(false);
+
+  // On phones the sidebar is a drawer: close it after every navigation.
+  useEffect(() => { if (isMobileNow()) set({ sidebarOpen: false }); }, [loc.pathname, loc.search]);
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
@@ -40,11 +45,18 @@ export function Shell({ children }: { children: React.ReactNode }) {
 
   return (
     <div className="h-full flex overflow-hidden">
-      {sidebarOpen && <Sidebar />}
+      {sidebarOpen && !mobile && <Sidebar />}
+      {sidebarOpen && mobile && (
+        <div className="fixed inset-0 z-[700] flex" role="dialog" aria-modal="true" aria-label="Navigation">
+          <div className="absolute inset-0 bg-black/40 animate-fade" onClick={() => set({ sidebarOpen: false })} />
+          <div className="relative h-full w-[85vw] max-w-[320px] animate-drawer shadow-2xl"><Sidebar mobile /></div>
+        </div>
+      )}
       <div className="flex-1 min-w-0 flex flex-col">
         <Topbar />
         <main className="flex-1 min-h-0 overflow-hidden bg-[var(--bg)]">{children}</main>
         <TaskTray />
+        {mobile && <TabBar />}
       </div>
       {openTaskId && <TaskModal id={openTaskId} onClose={() => set({ openTaskId: null })} />}
       <CommandPalette />
@@ -60,38 +72,99 @@ export function Shell({ children }: { children: React.ReactNode }) {
   );
 }
 
+function newMenuItems(nav: (p: string) => void): MenuItem[] {
+  const set = getState().set;
+  return [
+    { label: 'Task', icon: <CheckSquare size={14} />, hint: 'T', onClick: () => set({ createOpen: 'task', createDefaults: {} }) },
+    { label: 'Doc', icon: <FileText size={14} />, hint: 'D', onClick: () => { const d = getState().create('doc', { title: 'Untitled', content: '', parentId: null, location: null }); nav('/doc/' + d.id); } },
+    { label: 'Reminder', icon: <BellIcon size={14} />, hint: 'R', onClick: () => set({ createOpen: 'reminder' }) },
+    { label: 'Chat message', icon: <MessagesSquare size={14} />, onClick: () => nav('/chat') },
+    { label: 'Whiteboard', icon: <PenTool size={14} />, onClick: () => { const w = getState().create('whiteboard', { name: 'Whiteboard', elements: [] }); nav('/whiteboard/' + w.id); } },
+    { label: 'Dashboard', icon: <LayoutDashboard size={14} />, onClick: () => { const d = getState().create('dashboard', { name: 'Dashboard', widgets: [] }); nav('/dashboard/' + d.id); } },
+  ];
+}
+
+const useUnread = () => {
+  const notifications = useStore((s) => s.data.notification);
+  const me = useStore((s) => s.user!.id);
+  return Object.values(notifications).filter((n) => n.user === me && !n.read && !n.cleared).length;
+};
+
 function Topbar() {
   const sidebarOpen = useStore((s) => s.sidebarOpen);
   const set = useStore((s) => s.set);
   const nav = useNavigate();
-  const notifications = useStore((s) => s.data.notification);
-  const me = useStore((s) => s.user!.id);
-  const unread = Object.values(notifications).filter((n) => n.user === me && !n.read && !n.cleared).length;
+  const mobile = useIsMobile();
+  const unread = useUnread();
   return (
-    <header className="h-12 shrink-0 flex items-center gap-2 px-3 border-b bg-[var(--panel)]">
-      {!sidebarOpen && <button className="icon-btn" onClick={() => { set({ sidebarOpen: true }); localStorage.setItem('proman.sidebar', '1'); }}><PanelLeftOpen size={16} /></button>}
-      <div className="flex-1 flex justify-center">
-        <button onClick={() => set({ paletteOpen: true })} className="w-full max-w-md flex items-center gap-2 rounded-lg border bg-[var(--subtle)] px-3 py-1.5 text-[13px] text-[var(--faint)] hover:border-[var(--border-strong)]">
-          <Search size={14} /> <span className="flex-1 text-left">Search tasks, docs, people…</span><span className="kbd">Ctrl K</span>
+    <header className="h-12 shrink-0 flex items-center gap-2 px-3 border-b bg-[var(--panel)]" style={{ paddingTop: 'env(safe-area-inset-top)', height: 'calc(48px + env(safe-area-inset-top))' }}>
+      {(mobile || !sidebarOpen) && (
+        <button className="icon-btn coarse:!w-10 coarse:!h-10" aria-label="Open navigation" onClick={() => { set({ sidebarOpen: true }); if (!mobile) localStorage.setItem('proman.sidebar', '1'); }}>
+          {mobile ? <Menu size={20} /> : <PanelLeftOpen size={16} />}
+        </button>
+      )}
+      <div className="flex-1 flex justify-center min-w-0">
+        <button onClick={() => set({ paletteOpen: true })} className="w-full max-w-md flex items-center gap-2 rounded-lg border bg-[var(--subtle)] px-3 py-1.5 coarse:py-2 text-[13px] text-[var(--faint)] hover:border-[var(--border-strong)] min-w-0">
+          <Search size={14} className="shrink-0" /> <span className="flex-1 text-left truncate">{mobile ? 'Search' : 'Search tasks, docs, people…'}</span><span className="kbd hidden md:inline">Ctrl K</span>
         </button>
       </div>
       <TimerChip />
-      <Popover align="end" trigger={<button className="btn btn-primary !py-1.5"><Plus size={15} /> New</button>}>
-        {(close) => <MenuList close={close} items={[
-          { label: 'Task', icon: <CheckSquare size={14} />, hint: 'T', onClick: () => set({ createOpen: 'task', createDefaults: {} }) },
-          { label: 'Doc', icon: <FileText size={14} />, hint: 'D', onClick: () => { const d = getState().create('doc', { title: 'Untitled', content: '', parentId: null, location: null }); nav('/doc/' + d.id); } },
-          { label: 'Reminder', icon: <BellIcon size={14} />, hint: 'R', onClick: () => set({ createOpen: 'reminder' }) },
-          { label: 'Chat message', icon: <MessagesSquare size={14} />, onClick: () => nav('/chat') },
-          { label: 'Whiteboard', icon: <PenTool size={14} />, onClick: () => { const w = getState().create('whiteboard', { name: 'Whiteboard', elements: [] }); nav('/whiteboard/' + w.id); } },
-          { label: 'Dashboard', icon: <LayoutDashboard size={14} />, onClick: () => { const d = getState().create('dashboard', { name: 'Dashboard', widgets: [] }); nav('/dashboard/' + d.id); } },
-        ]} />}
-      </Popover>
-      <button className="icon-btn relative" onClick={() => nav('/inbox')} title="Inbox">
-        <Bell size={17} />
-        {unread > 0 && <span className="absolute top-0.5 right-0.5 w-2 h-2 rounded-full bg-red-500" />}
-      </button>
-      <button className="icon-btn" title="Keyboard shortcuts (?)" onClick={() => window.dispatchEvent(new Event('proman-shortcuts'))}><Keyboard size={16} /></button>
+      {!mobile && (
+        <>
+          <Popover align="end" trigger={<button className="btn btn-primary !py-1.5"><Plus size={15} /> New</button>}>
+            {(close) => <MenuList close={close} items={newMenuItems(nav)} />}
+          </Popover>
+          <button className="icon-btn relative" onClick={() => nav('/inbox')} title="Inbox">
+            <Bell size={17} />
+            {unread > 0 && <span className="absolute top-0.5 right-0.5 w-2 h-2 rounded-full bg-red-500" />}
+          </button>
+          <button className="icon-btn" title="Keyboard shortcuts (?)" onClick={() => window.dispatchEvent(new Event('proman-shortcuts'))}><Keyboard size={16} /></button>
+        </>
+      )}
     </header>
+  );
+}
+
+/** Phone bottom tab bar: 4 destinations + a centre create button (ui-polish: bottom-navigation.md). */
+function TabBar() {
+  const nav = useNavigate();
+  const loc = useLocation();
+  const set = useStore((s) => s.set);
+  const drawer = useStore((s) => s.sidebarOpen);
+  const unread = useUnread();
+  const tab = (to: string, label: string, Icon: any, opts: { end?: boolean; badge?: number } = {}) => (
+    <NavLink to={to} end={opts.end} className={({ isActive }) => cn('relative flex-1 flex flex-col items-center justify-center gap-1 min-h-[48px] rounded-lg transition-[color,transform] duration-150 active:scale-95',
+      isActive && !drawer ? 'text-accent font-semibold' : 'text-[var(--muted)]')}>
+      {({ isActive }) => (
+        <>
+          {isActive && !drawer && <span className="absolute top-0 h-0.5 w-8 rounded-full bg-[var(--accent)]" />}
+          <span className="relative">
+            <Icon size={24} strokeWidth={isActive && !drawer ? 2.4 : 1.8} />
+            {!!opts.badge && <span className="absolute -top-1 -right-2 min-w-[16px] h-4 px-1 rounded-full bg-red-600 text-white text-[10px] font-bold leading-4 text-center ring-2 ring-[var(--panel)]">{opts.badge > 9 ? '9+' : opts.badge}</span>}
+          </span>
+          <span className="text-[11px] leading-none">{label}</span>
+        </>
+      )}
+    </NavLink>
+  );
+  return (
+    <nav aria-label="Main" className="shrink-0 flex items-stretch gap-1 px-3 pt-1 border-t bg-[var(--panel)] safe-bottom">
+      {tab('/', 'Home', HomeIcon, { end: true })}
+      {tab('/inbox', 'Inbox', InboxIcon, { badge: unread })}
+      <div className="flex-1 flex items-center justify-center">
+        <Popover side="top" align="center" trigger={
+          <button aria-label="Create new" className="w-12 h-12 rounded-full bg-accent flex items-center justify-center shadow-[0_6px_20px_-6px_var(--accent)] active:scale-95 transition-transform"><Plus size={24} strokeWidth={2.4} /></button>
+        }>
+          {(close) => <MenuList close={close} items={newMenuItems(nav)} />}
+        </Popover>
+      </div>
+      {tab('/chat', 'Chat', MessagesSquare)}
+      <button onClick={() => set({ sidebarOpen: true })} aria-label="More: spaces and all pages" className={cn('relative flex-1 flex flex-col items-center justify-center gap-1 min-h-[48px] rounded-lg active:scale-95 transition-transform', drawer ? 'text-accent font-semibold' : 'text-[var(--muted)]')}>
+        {drawer && <span className="absolute top-0 h-0.5 w-8 rounded-full bg-[var(--accent)]" />}
+        <Menu size={24} strokeWidth={drawer ? 2.4 : 1.8} />
+        <span className="text-[11px] leading-none">More</span>
+      </button>
+    </nav>
   );
 }
 

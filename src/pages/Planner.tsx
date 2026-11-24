@@ -2,7 +2,7 @@ import { useMemo, useState } from 'react';
 import { ChevronLeft, ChevronRight, X, CalendarDays } from 'lucide-react';
 import { addDays, format, isSameDay, isToday, startOfWeek, startOfDay, setHours, getHours, getMinutes, differenceInMinutes, addMinutes } from 'date-fns';
 import { useStore, getState, statusOf, isClosed } from '../lib/store';
-import { StatusIcon, SearchInput } from '../components/ui';
+import { StatusIcon, SearchInput, useIsMobile } from '../components/ui';
 import { cn, alpha } from '../lib/utils';
 import type { Task } from '../lib/types';
 
@@ -13,9 +13,12 @@ export default function Planner() {
   const tasks = useStore((s) => s.data.task);
   const blocks = useStore((s) => s.data.block);
   const me = useStore((s) => s.user!.id);
-  const [weekStart, setWeekStart] = useState(startOfWeek(new Date(), { weekStartsOn: 1 }));
+  const mobile = useIsMobile();
+  const span = mobile ? 3 : 7; // phones: 3 readable day columns instead of 7 cramped ones
+  const home = () => (mobile ? startOfDay(new Date()) : startOfWeek(new Date(), { weekStartsOn: 1 }));
+  const [weekStart, setWeekStart] = useState(home);
   const [q, setQ] = useState('');
-  const days = Array.from({ length: 7 }, (_, i) => addDays(weekStart, i));
+  const days = Array.from({ length: span }, (_, i) => addDays(weekStart, i));
   const mine = Object.values(tasks).filter((t) => !t.archived && !isClosed(t) && t.assignees?.includes(me));
   const myBlocks = Object.values(blocks).filter((b) => b.user === me);
   const scheduled = new Set(myBlocks.map((b) => b.taskId));
@@ -48,7 +51,7 @@ export default function Planner() {
   );
   return (
     <div className="h-full flex">
-      <div className="w-64 shrink-0 border-r bg-[var(--sidebar)] flex flex-col">
+      <div className="hidden md:flex w-64 shrink-0 border-r bg-[var(--sidebar)] flex-col">
         <div className="h-12 flex items-center px-4 border-b font-semibold gap-2"><CalendarDays size={16} /> Planner</div>
         <div className="flex-1 overflow-y-auto p-2">
           <div className="text-[11.5px] font-semibold text-[var(--muted)] px-2 py-1">Priorities</div>
@@ -62,9 +65,9 @@ export default function Planner() {
       </div>
       <div className="flex-1 min-w-0 flex flex-col">
         <div className="h-12 flex items-center gap-2 px-4 border-b">
-          <button className="btn btn-outline !py-1" onClick={() => setWeekStart(startOfWeek(new Date(), { weekStartsOn: 1 }))}>Today</button>
-          <button className="icon-btn" onClick={() => setWeekStart(addDays(weekStart, -7))}><ChevronLeft size={16} /></button>
-          <button className="icon-btn" onClick={() => setWeekStart(addDays(weekStart, 7))}><ChevronRight size={16} /></button>
+          <button className="btn btn-outline !py-1" onClick={() => setWeekStart(home())}>Today</button>
+          <button className="icon-btn coarse:!w-10 coarse:!h-10" aria-label="Previous" onClick={() => setWeekStart(addDays(weekStart, -span))}><ChevronLeft size={16} /></button>
+          <button className="icon-btn coarse:!w-10 coarse:!h-10" aria-label="Next" onClick={() => setWeekStart(addDays(weekStart, span))}><ChevronRight size={16} /></button>
           <span className="font-semibold">{format(weekStart, 'MMMM yyyy')}</span>
         </div>
         <div className="flex border-b">

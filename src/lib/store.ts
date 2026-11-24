@@ -143,7 +143,8 @@ export const useStore = create<State>((set, get) => {
     loading: false,
     data: emptyByKind(),
     openTaskId: null,
-    sidebarOpen: localStorage.getItem('proman.sidebar') !== '0',
+    // Phones start with the drawer closed; desktop remembers the last choice.
+    sidebarOpen: window.matchMedia('(max-width: 767px)').matches ? false : localStorage.getItem('proman.sidebar') !== '0',
     toasts: [],
     paletteOpen: false,
     createOpen: null,

@@ -2,7 +2,7 @@ import { useMemo, useState } from 'react';
 import { ChevronDown, ChevronRight, Plus, GripVertical, MoreHorizontal } from 'lucide-react';
 import { useStore, getState, statusesForList, statusOf, isClosed } from '../../lib/store';
 import { groupTasks, applyFilters, sortTasks } from '../../lib/filters';
-import { StatusPicker, StatusIcon, StatusPill, TagChip, Checkbox, useContextMenu, Popover, MenuList, Empty } from '../ui';
+import { StatusPicker, StatusIcon, StatusPill, TagChip, Checkbox, useContextMenu, Popover, MenuList, Empty, useIsMobile } from '../ui';
 import { Cell, colLabel, colWidth, applyGroupChange, taskMenu, TaskBadges, BulkBar } from './shared';
 import { DEFAULT_COLUMNS } from './Toolbar';
 import { cn, between, alpha, readableText } from '../../lib/utils';
@@ -24,7 +24,9 @@ export function ListView({ view, tasks, allTasks, listIds }: ViewProps) {
     return m;
   }, [tasks]);
   const toggleSel = (id: string) => setSelected((s) => (s.includes(id) ? s.filter((x) => x !== id) : [...s, id]));
-  const gridCols = `minmax(320px,1fr) ${cols.map((c) => colWidth(c) + 'px').join(' ')} 36px`;
+  const mobile = useIsMobile();
+  // Phones: a narrower name column; the extra columns scroll sideways inside the group card.
+  const gridCols = `minmax(${mobile ? 210 : 320}px,1fr) ${cols.map((c) => colWidth(c) + 'px').join(' ')} 36px`;
   const defaultList = listIds.length === 1 ? listIds[0] : undefined;
 
   if (!listIds.length) return <Empty title="No Lists here yet" body="Create a List from the sidebar to start adding tasks." />;
@@ -56,7 +58,7 @@ export function ListView({ view, tasks, allTasks, listIds }: ViewProps) {
               {!isCol && (
                 <div className="rounded-lg border bg-[var(--panel)] overflow-hidden">
                   <div className="grid items-center border-b text-[11.5px] font-medium text-[var(--muted)] bg-[var(--subtle)]" style={{ gridTemplateColumns: gridCols }}>
-                    <div className="px-3 py-1.5 pl-12">Name</div>
+                    <div className="px-3 py-1.5 pl-8 sm:pl-12">Name</div>
                     {cols.map((c) => <div key={c} className="px-2 py-1.5 truncate">{colLabel(c)}</div>)}
                     <div />
                   </div>
@@ -116,18 +118,22 @@ function Row({ t, depth, cols, gridCols, mode, childrenOf, groupKey, groupBy, se
         onClick={() => getState().openTask(t.id)}
       >
         <div className="flex items-center gap-1.5 min-w-0 pr-2" style={{ paddingLeft: 6 + depth * 22 }}>
-          <span className="w-4 flex justify-center opacity-0 group-hover:opacity-100 cursor-grab text-[var(--faint)]" onClick={(e) => e.stopPropagation()}><GripVertical size={13} /></span>
-          <span className={cn('w-4 flex', !sel && 'opacity-0 group-hover:opacity-100')} onClick={(e) => e.stopPropagation()}><Checkbox checked={sel} onChange={() => toggleSel(t.id)} /></span>
+          {/* drag handle + bulk-select checkbox: desktop only (HTML drag & drop doesn't work on touch) */}
+          <span className="w-4 hidden sm:flex justify-center opacity-0 group-hover:opacity-100 cursor-grab text-[var(--faint)]" onClick={(e) => e.stopPropagation()}><GripVertical size={13} /></span>
+          <span className={cn('w-4 hidden sm:flex', !sel && 'opacity-0 group-hover:opacity-100')} onClick={(e) => e.stopPropagation()}><Checkbox checked={sel} onChange={() => toggleSel(t.id)} /></span>
           <button className={cn('w-4 flex justify-center text-[var(--muted)]', !kids.length && 'invisible')} onClick={(e) => { e.stopPropagation(); setOpen(!open); }}>{open ? <ChevronDown size={13} /> : <ChevronRight size={13} />}</button>
           <span onClick={(e) => e.stopPropagation()} className="flex">
             <StatusPicker listId={t.listId} value={t.status} onChange={(id) => getState().updateTask(t.id, { status: id })} trigger={<button className="flex"><StatusIcon status={st} size={15} /></button>} />
           </span>
           <span className={cn('truncate text-[13.5px]', closed && 'line-through text-[var(--muted)]')}>{t.name}</span>
-          {t.type && t.type !== 'task' && <span className="text-[10px] uppercase rounded bg-[var(--subtle)] border px-1 text-[var(--muted)]">{t.type}</span>}
-          {kids.length > 0 && <button onClick={(e) => { e.stopPropagation(); setOpen(!open); }} className="text-[11px] text-[var(--muted)] rounded border px-1 hover:bg-[var(--hover)]">↳ {kids.length}</button>}
-          {!cols.includes('tags') && (t.tags || []).slice(0, 3).map((x) => <TagChip key={x} name={x} small />)}
-          <TaskBadges t={t} />
-          <button className="opacity-0 group-hover:opacity-100 icon-btn !w-5 !h-5 shrink-0" title="Add subtask" onClick={(e) => { e.stopPropagation(); setAdding(true); setOpen(true); }}><Plus size={12} /></button>
+          {/* phones: the name gets the room; type, tags, badges and quick-add show from sm up */}
+          {t.type && t.type !== 'task' && <span className="hidden sm:inline text-[10px] uppercase rounded bg-[var(--subtle)] border px-1 text-[var(--muted)]">{t.type}</span>}
+          {kids.length > 0 && <button onClick={(e) => { e.stopPropagation(); setOpen(!open); }} className="shrink-0 text-[11px] text-[var(--muted)] rounded border px-1 hover:bg-[var(--hover)]">↳ {kids.length}</button>}
+          <span className="hidden sm:contents">
+            {!cols.includes('tags') && (t.tags || []).slice(0, 3).map((x) => <TagChip key={x} name={x} small />)}
+            <TaskBadges t={t} />
+            <button className="opacity-0 group-hover:opacity-100 icon-btn !w-5 !h-5 shrink-0" title="Add subtask" onClick={(e) => { e.stopPropagation(); setAdding(true); setOpen(true); }}><Plus size={12} /></button>
+          </span>
         </div>
         {cols.map((c) => <div key={c} className="px-2 min-w-0 flex items-center" onClick={(e) => e.stopPropagation()}><Cell col={c} t={t} /></div>)}
         <div onClick={(e) => e.stopPropagation()} className="flex justify-center">

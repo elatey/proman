@@ -136,7 +136,7 @@ export function CommentCard({ c, compact }: { c: Comment; compact?: boolean }) {
   );
 }
 
-export function Composer({ onSend, small, placeholder = 'Write a comment… Use @ to mention', allowAssign = true }: { onSend: (html: string, assignee: string | null) => void; small?: boolean; placeholder?: string; allowAssign?: boolean }) {
+export function Composer({ onSend, small, placeholder = 'Write a comment… Use @ to mention', allowAssign = true, submitLabel }: { onSend: (html: string, assignee: string | null) => void; small?: boolean; placeholder?: string; allowAssign?: boolean; submitLabel?: string }) {
   const [html, setHtml] = useState('');
   const [assignee, setAssignee] = useState<string[]>([]);
   const ed = useRef<Editor | null>(null);
@@ -160,7 +160,7 @@ export function Composer({ onSend, small, placeholder = 'Write a comment… Use 
           )}
           <div className="flex-1" />
           <span className="text-[10px] text-[var(--faint)] mr-1 hidden sm:inline">Ctrl+Enter</span>
-          <button className="btn btn-primary !py-1 !px-2.5 !text-xs" onClick={send}><Send size={12} /> {small ? 'Reply' : 'Comment'}</button>
+          <button className="btn btn-primary !py-1 !px-2.5 !text-xs" onClick={send}><Send size={12} /> {submitLabel || (small ? 'Reply' : 'Comment')}</button>
         </div>
       </div>
     </div>

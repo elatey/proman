@@ -48,9 +48,9 @@ export default function CalendarView({ view, tasks, listIds }: ViewProps) {
   const nav = (n: number) => setCursor(mode === 'month' ? addMonths(cursor, n) : mode === 'week' ? addWeeks(cursor, n) : addDays(cursor, n));
 
   return (
-    <div className="h-full flex">
+    <div className="relative h-full flex">
       <div className="flex-1 min-w-0 flex flex-col">
-        <div className="flex items-center gap-2 px-4 py-2 border-b">
+        <div className="flex flex-wrap items-center gap-2 px-3 sm:px-4 py-2 border-b">
           <button className="btn btn-outline !py-1" onClick={() => setCursor(startOfDay(new Date()))}>Today</button>
           <button className="icon-btn" onClick={() => nav(-1)}><ChevronLeft size={16} /></button>
           <button className="icon-btn" onClick={() => nav(1)}><ChevronRight size={16} /></button>
@@ -59,7 +59,7 @@ export default function CalendarView({ view, tasks, listIds }: ViewProps) {
           <div className="flex rounded-lg border p-0.5">
             {(['day', 'week', 'month'] as const).map((m) => <button key={m} onClick={() => setMode(m)} className={cn('px-2.5 py-0.5 rounded-md text-[13px] capitalize', mode === m ? 'bg-[var(--hover)] font-medium' : 'text-[var(--muted)]')}>{m}</button>)}
           </div>
-          <button className={cn('btn !py-1', side ? 'btn-primary' : 'btn-outline')} onClick={() => setSide(!side)}><PanelRight size={14} /> Unscheduled ({unscheduled.length})</button>
+          <button className={cn('btn !py-1', side ? 'btn-primary' : 'btn-outline')} onClick={() => setSide(!side)} aria-label="Unscheduled tasks"><PanelRight size={14} /> <span className="hidden sm:inline">Unscheduled</span> ({unscheduled.length})</button>
         </div>
         {mode === 'day' ? (
           <div className="flex-1 overflow-y-auto">
@@ -99,7 +99,7 @@ export default function CalendarView({ view, tasks, listIds }: ViewProps) {
         )}
       </div>
       {side && (
-        <div className="w-64 shrink-0 border-l flex flex-col bg-[var(--subtle)]">
+        <div className="absolute md:static inset-y-0 right-0 z-30 w-[80%] max-w-xs md:w-64 shrink-0 border-l flex flex-col bg-[var(--subtle)] shadow-xl md:shadow-none">
           <div className="px-3 py-2.5 text-[13px] font-semibold border-b">Unscheduled tasks</div>
           <div className="flex-1 overflow-y-auto p-2 space-y-1">
             <div className="text-[11px] text-[var(--muted)] px-1 pb-1">Drag a task onto the calendar to schedule it.</div>

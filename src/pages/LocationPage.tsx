@@ -105,17 +105,17 @@ function LocationHeader({ type, id, entity }: { type: string; id: string; entity
       {type === 'everything' ? <Layers size={18} className="text-[var(--muted)]" /> : type === 'space' ? (
         <span className="w-6 h-6 rounded-md text-[11px] font-bold flex items-center justify-center" style={{ background: entity.color, color: readableText(entity.color) }}>{entity.icon || entity.name[0]}</span>
       ) : type === 'folder' ? <FolderIcon size={18} className="text-[var(--muted)]" /> : <span className="w-3 h-3 rounded-full" style={{ background: entity.color || space?.color }} />}
-      {space && type !== 'space' && <><button className="text-[13px] text-[var(--muted)] hover:text-[var(--text)]" onClick={() => nav('/space/' + space.id)}>{space.name}</button><ChevronRight size={13} className="text-[var(--faint)]" /></>}
-      {folder && <><button className="text-[13px] text-[var(--muted)] hover:text-[var(--text)]" onClick={() => nav('/folder/' + folder.id)}>{folder.name}</button><ChevronRight size={13} className="text-[var(--faint)]" /></>}
+      {space && type !== 'space' && <span className="hidden md:contents"><button className="text-[13px] text-[var(--muted)] hover:text-[var(--text)]" onClick={() => nav('/space/' + space.id)}>{space.name}</button><ChevronRight size={13} className="text-[var(--faint)]" /></span>}
+      {folder && <span className="hidden md:contents"><button className="text-[13px] text-[var(--muted)] hover:text-[var(--text)]" onClick={() => nav('/folder/' + folder.id)}>{folder.name}</button><ChevronRight size={13} className="text-[var(--faint)]" /></span>}
       {type === 'everything' ? <span className="font-semibold">Everything</span> : (
         <div className="min-w-[60px] max-w-[360px]"><InlineEdit value={entity.name} onSave={(v) => getState().update(type as any, id, { name: v })} className="font-semibold text-[15px]" /></div>
       )}
       {type !== 'everything' && <button className="icon-btn" onClick={() => toggle({ type, id })}><Star size={15} className={isFav(id) ? 'text-amber-500' : ''} fill={isFav(id) ? 'currentColor' : 'none'} /></button>}
       {type === 'list' && entity.sprint && (
-        <span className="text-xs rounded-full bg-[var(--subtle)] border px-2 py-0.5 text-[var(--muted)]">Sprint · {new Date(entity.sprint.start).toLocaleDateString()} – {new Date(entity.sprint.end).toLocaleDateString()}</span>
+        <span className="hidden md:inline text-xs rounded-full bg-[var(--subtle)] border px-2 py-0.5 text-[var(--muted)]">Sprint · {new Date(entity.sprint.start).toLocaleDateString()} – {new Date(entity.sprint.end).toLocaleDateString()}</span>
       )}
       <div className="flex-1" />
-      <button className="btn btn-ghost !py-1" onClick={() => nav('/automations?loc=' + type + ':' + id)}><Zap size={14} /> Automate</button>
+      <button className="btn btn-ghost !py-1 !px-2 sm:!px-3" aria-label="Automate" onClick={() => nav('/automations?loc=' + type + ':' + id)}><Zap size={14} /> <span className="hidden sm:inline">Automate</span></button>
       {type !== 'everything' && space && (
         <Popover align="end" trigger={<button className="icon-btn"><Settings2 size={16} /></button>}>
           {(close) => <MenuList close={close} items={[

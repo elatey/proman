@@ -57,7 +57,7 @@ export function Floating({ anchor, point, onClose, children, align = 'start', wi
     const el = ref.current;
     if (!el) return;
     const r = anchor?.getBoundingClientRect() || (point ? new DOMRect(point.x, point.y, 0, 0) : new DOMRect(0, 0, 0, 0));
-    const w = el.offsetWidth, h = el.offsetHeight;
+    const w = Math.min(el.offsetWidth, window.innerWidth - 16), h = el.offsetHeight;
     let left = side === 'right' ? r.right + 6 : align === 'end' ? r.right - w : align === 'center' ? r.left + r.width / 2 - w / 2 : r.left;
     let top = side === 'right' ? r.top : side === 'top' ? r.top - h - 6 : r.bottom + 6;
     if (top + h > window.innerHeight - 8) top = Math.max(8, (side === 'bottom' ? r.top - h - 6 : window.innerHeight - h - 8));
@@ -85,8 +85,8 @@ export function Floating({ anchor, point, onClose, children, align = 'start', wi
       data-floating
       onClick={(e) => e.stopPropagation()}
       onMouseDown={(e) => e.stopPropagation()}
-      className={cn('pop fixed z-[1000] animate-pop overflow-hidden', className)}
-      style={{ top: pos?.top ?? -9999, left: pos?.left ?? -9999, width, visibility: pos ? 'visible' : 'hidden' }}
+      className={cn('pop fixed z-[1000] animate-pop overflow-auto', className)}
+      style={{ top: pos?.top ?? -9999, left: pos?.left ?? -9999, width, maxWidth: 'calc(100vw - 16px)', maxHeight: 'calc(100dvh - 16px)', visibility: pos ? 'visible' : 'hidden' }}
     >
       {children}
     </div>,
@@ -150,8 +150,8 @@ export function Modal({ open, onClose, children, width = 520, title, className, 
   }, [open, onClose]);
   if (!open) return null;
   return createPortal(
-    <div className="fixed inset-0 z-[900] flex items-start justify-center bg-black/40 p-4 pt-[8vh] animate-fade" onMouseDown={onClose}>
-      <div className={cn('pop w-full max-h-[86vh] flex flex-col animate-pop', className)} style={{ maxWidth: width }} onMouseDown={(e) => e.stopPropagation()}>
+    <div className="fixed inset-0 z-[900] flex items-start justify-center bg-black/40 p-2 pt-[4vh] sm:p-4 sm:pt-[8vh] animate-fade" onMouseDown={onClose}>
+      <div className={cn('pop w-full max-h-[92dvh] sm:max-h-[86vh] flex flex-col animate-pop', className)} style={{ maxWidth: width }} onMouseDown={(e) => e.stopPropagation()}>
         {title && !bare && (
           <div className="flex items-center justify-between px-5 py-3.5 border-b">
             <div className="font-semibold text-[15px]">{title}</div>
@@ -506,7 +506,7 @@ export function Toasts() {
   const toasts = useStore((s) => s.toasts);
   const dismiss = useStore((s) => s.dismissToast);
   return createPortal(
-    <div className="fixed bottom-4 left-1/2 -translate-x-1/2 z-[2000] flex flex-col gap-2 items-center">
+    <div className="fixed bottom-4 tabbar-offset left-1/2 -translate-x-1/2 z-[2000] flex flex-col gap-2 items-center w-max max-w-[calc(100vw-16px)]">
       {toasts.map((t) => (
         <div key={t.id} className={cn('pop animate-pop flex items-center gap-3 px-4 py-2.5 text-sm', t.tone === 'error' && '!bg-red-600 !text-white !border-red-700', t.tone === 'success' && '!border-green-500')}>
           <span>{t.text}</span>
@@ -563,6 +563,20 @@ export function Logo({ size = 28 }: { size?: number }) {
     </svg>
   );
 }
+
+const MOBILE_QUERY = '(max-width: 767px)';
+export const isMobileNow = () => typeof window !== 'undefined' && window.matchMedia(MOBILE_QUERY).matches;
+/** True on phone-width screens (< 768px). Re-renders when the window crosses the breakpoint. */
+export const useIsMobile = () => {
+  const [m, setM] = useState(isMobileNow);
+  useEffect(() => {
+    const mq = window.matchMedia(MOBILE_QUERY);
+    const h = () => setM(mq.matches);
+    mq.addEventListener('change', h);
+    return () => mq.removeEventListener('change', h);
+  }, []);
+  return m;
+};
 
 export const useNow = (ms = 1000) => {
   const [n, setN] = useState(Date.now());

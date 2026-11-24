@@ -55,12 +55,13 @@ export function ViewToolbar({ view, listIds, tasks, features }: { view: View; li
   const nFilters = (cfg.filters || []).length;
 
   return (
-    <div className="flex items-center gap-1 px-4 py-1.5 border-b bg-[var(--panel)] overflow-x-auto">
+    <div className="flex items-center gap-1 px-2 sm:px-4 py-1.5 border-b bg-[var(--panel)] overflow-x-auto [&>*]:shrink-0">
+      {/* children keep their width and the row scrolls sideways on narrow screens */}
       <div className="relative">
         <Search size={13} className="absolute left-2 top-1/2 -translate-y-1/2 text-[var(--faint)]" />
-        <input className="w-40 focus:w-56 transition-all rounded-md bg-transparent hover:bg-[var(--hover)] focus:bg-[var(--subtle)] pl-7 pr-2 py-1 text-[13px] outline-none" placeholder="Search tasks…" value={cfg.search || ''} onChange={(e) => set({ search: e.target.value })} />
+        <input className="w-28 sm:w-40 focus:w-44 sm:focus:w-56 transition-all rounded-md bg-transparent hover:bg-[var(--hover)] focus:bg-[var(--subtle)] pl-7 pr-2 py-1 text-[13px] outline-none" placeholder="Search tasks…" value={cfg.search || ''} onChange={(e) => set({ search: e.target.value })} />
       </div>
-      <div className="flex-1" />
+      <div className="flex-1 !shrink" />
       {features.group && (
         <Popover align="end" trigger={<button className={tb(cfg.groupBy !== undefined && cfg.groupBy !== 'status')}><Layers size={14} /> Group: {groupLabel}</button>}>
           {(close) => <MenuList close={close} items={[

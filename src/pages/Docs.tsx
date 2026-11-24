@@ -1,10 +1,10 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
-import { FileText, Plus, ChevronRight, ChevronDown, MoreHorizontal, Trash2, Globe, Copy, Star, BookOpen, MessageSquare, Search, Download, History, X } from 'lucide-react';
+import { FileText, Plus, ChevronRight, ChevronDown, ChevronLeft, MoreHorizontal, Trash2, Globe, Copy, Star, BookOpen, MessageSquare, Search, Download, History, X } from 'lucide-react';
 import { formatDistanceToNow, format } from 'date-fns';
 import { useStore, getState, memberName, locationName, pushRecent } from '../lib/store';
 import { RichEditor, Html } from '../components/RichEditor';
-import { Popover, MenuList, Empty, Avatar, Toggle, SearchInput, Modal } from '../components/ui';
+import { Popover, MenuList, Empty, Avatar, Toggle, SearchInput, Modal, useIsMobile } from '../components/ui';
 import { CommentCard, Composer } from '../components/task/ActivityPanel';
 import { useFavs } from '../components/layout/Sidebar';
 import { cn, debounce, stripHtml, downloadFile } from '../lib/utils';
@@ -23,9 +23,13 @@ export default function Docs() {
     const d = getState().create('doc', { title: 'Untitled', content: '', parentId, location, order: Date.now() });
     nav('/doc/' + d.id);
   };
+  const mobile = useIsMobile();
+  // Phones: list first; opening a doc shows only the editor (with a back button).
+  const showList = !mobile || !doc;
+  const showMain = !mobile || !!doc;
   return (
     <div className="h-full flex">
-      <div className="w-64 shrink-0 border-r bg-[var(--sidebar)] flex flex-col">
+      {showList && <div className={cn('shrink-0 border-r bg-[var(--sidebar)] flex flex-col', mobile ? 'w-full' : 'w-64')}>
         <div className="h-12 flex items-center px-3 border-b gap-2">
           <BookOpen size={16} className="text-[var(--muted)]" /><span className="font-semibold flex-1">Docs</span>
           <button className="btn btn-primary !py-1 !px-2" onClick={() => create()}><Plus size={14} /> New</button>
@@ -35,10 +39,10 @@ export default function Docs() {
           {filtered ? filtered.map((d) => <DocRow key={d.id} doc={d} depth={0} active={id} flat />) : roots.map((d) => <DocRow key={d.id} doc={d} depth={0} active={id} />)}
           {!roots.length && <div className="text-xs text-[var(--muted)] p-3">No docs yet.</div>}
         </div>
-      </div>
-      <div className="flex-1 min-w-0 overflow-y-auto">
-        {doc ? <DocEditor key={doc.id} doc={doc} /> : <DocsHome create={() => create()} />}
-      </div>
+      </div>}
+      {showMain && <div className="flex-1 min-w-0 overflow-y-auto">
+        {doc ? <DocEditor key={doc.id} doc={doc} onBack={mobile ? () => nav('/docs') : undefined} /> : <DocsHome create={() => create()} />}
+      </div>}
     </div>
   );
 }
@@ -49,7 +53,7 @@ function DocsHome({ create }: { create: () => void }) {
   const recent = Object.values(docs).filter((d) => !d.archived).sort((a, b) => (b.updated_at || '').localeCompare(a.updated_at || '')).slice(0, 18);
   const wikis = recent.filter((d) => d.wiki);
   return (
-    <div className="max-w-5xl mx-auto p-8">
+    <div className="max-w-5xl mx-auto p-4 sm:p-8">
       <h1 className="text-2xl font-bold">Docs</h1>
       <p className="text-[var(--muted)] mt-1">Wikis, specs, meeting notes and knowledge bases, all linked to your work.</p>
       <button className="mt-5 btn btn-primary" onClick={create}><Plus size={15} /> New Doc</button>
@@ -88,7 +92,7 @@ function DocRow({ doc, depth, active, flat }: { doc: Doc; depth: number; active?
   );
 }
 
-export function DocEditor({ doc }: { doc: Doc }) {
+export function DocEditor({ doc, onBack }: { doc: Doc; onBack?: () => void }) {
   const nav = useNavigate();
   const docs = useStore((s) => s.data.doc);
   const comments = useStore((s) => s.data.comment);
@@ -110,7 +114,8 @@ export function DocEditor({ doc }: { doc: Doc }) {
   return (
     <div className="flex min-h-full">
       <div className="flex-1 min-w-0">
-        <div className="sticky top-0 z-20 h-11 flex items-center gap-1 px-4 border-b bg-[var(--panel)]/95 backdrop-blur text-[13px]">
+        <div className="sticky top-0 z-20 h-11 flex items-center gap-1 px-2 sm:px-4 border-b bg-[var(--panel)]/95 backdrop-blur text-[13px]">
+          {onBack && <button className="icon-btn !w-10 !h-10 shrink-0" aria-label="All docs" onClick={onBack}><ChevronLeft size={20} /></button>}
           <div className="flex items-center gap-1 text-[var(--muted)] min-w-0">
             {doc.location && <><span className="truncate">{locationName(doc.location)}</span><ChevronRight size={12} /></>}
             {crumbs.map((c) => <span key={c.id} className="flex items-center gap-1"><button className="hover:text-[var(--text)] truncate" onClick={() => nav('/doc/' + c.id)}>{c.title || 'Untitled'}</button><ChevronRight size={12} /></span>)}
@@ -141,11 +146,11 @@ export function DocEditor({ doc }: { doc: Doc }) {
             ]} />}
           </Popover>
         </div>
-        <div className="max-w-[820px] mx-auto px-10 py-10">
+        <div className="max-w-[820px] mx-auto px-5 sm:px-10 py-6 sm:py-10">
           <Popover trigger={<button className="text-4xl hover:bg-[var(--hover)] rounded-lg p-1 -ml-1">{doc.icon || '📄'}</button>}>
             {(close) => <div className="p-2 grid grid-cols-8 gap-1 w-72">{'📄📝📘📗📙📕📒📓🧭🚀🎯💡📌📊📈🗂️🧪🛠️🎨🧩📣🤝✅⭐🔥🌍🏁🧠💬🗓️🔒'.match(/\p{Extended_Pictographic}️?/gu)!.map((e) => <button key={e} className="text-xl rounded hover:bg-[var(--hover)] p-1" onClick={() => { getState().update('doc', doc.id, { icon: e }); close(); }}>{e}</button>)}</div>}
           </Popover>
-          <input className="w-full text-[38px] font-bold bg-transparent outline-none mt-2 mb-4 placeholder:text-[var(--faint)]" placeholder="Untitled" defaultValue={doc.title === 'Untitled' ? '' : doc.title} key={doc.id} onChange={(e) => saveTitle(e.target.value || 'Untitled')} />
+          <input className="w-full text-[28px] sm:text-[38px] font-bold bg-transparent outline-none mt-2 mb-4 placeholder:text-[var(--faint)]" placeholder="Untitled" defaultValue={doc.title === 'Untitled' ? '' : doc.title} key={doc.id} onChange={(e) => saveTitle(e.target.value || 'Untitled')} />
           <RichEditor value={doc.content} onChange={save} toolbar className="!text-[15.5px] min-h-[50vh]" placeholder="Start writing, or press / for commands…" />
           {subpages.length > 0 && (
             <div className="mt-10 border-t pt-4">
@@ -156,7 +161,7 @@ export function DocEditor({ doc }: { doc: Doc }) {
         </div>
       </div>
       {showComments && (
-        <div className="w-[340px] shrink-0 border-l bg-[var(--subtle)] flex flex-col sticky top-0 h-[calc(100vh-48px)]">
+        <div className="fixed inset-0 z-[750] md:static md:z-auto md:w-[340px] shrink-0 border-l bg-[var(--subtle)] flex flex-col md:sticky md:top-0 md:h-[calc(100vh-48px)]">
           <div className="h-11 flex items-center px-4 border-b bg-[var(--panel)] font-semibold text-sm">Comments <button className="ml-auto icon-btn" onClick={() => setShowComments(false)}><X size={14} /></button></div>
           <div className="flex-1 overflow-y-auto p-3 space-y-2">
             {docComments.map((c) => <CommentCard key={c.id} c={c} />)}

@@ -3,7 +3,7 @@ import { NavLink, useNavigate, useLocation } from 'react-router-dom';
 import {
   Home, Inbox, CalendarDays, MessagesSquare, FileText, LayoutDashboard, PenTool, Target, Clock, Video, Zap, LayoutTemplate, ChevronDown, ChevronRight,
   Plus, MoreHorizontal, Folder as FolderIcon, List as ListIcon, Star, Settings, UserPlus, LogOut, Pencil, Trash2, Palette, Copy, Archive, Lock, Layers, Link2,
-  Check, PanelLeftClose, Sliders, Sun, Moon, Monitor, Building2, Eye, EyeOff,
+  Check, PanelLeftClose, Sliders, Sun, Moon, Monitor, Building2, Eye, EyeOff, X,
 } from 'lucide-react';
 import { useStore, getState, canAdmin, statusesForList, isClosed } from '../../lib/store';
 import { Popover, MenuList, type MenuItem, useContextMenu, Modal, ColorDots, Avatar, Logo, Confirm } from '../ui';
@@ -34,7 +34,7 @@ export const useFavs = () => {
   return { favs, toggle, isFav: (id: string) => favs.some((f) => f.id === id) };
 };
 
-export function Sidebar() {
+export function Sidebar({ mobile }: { mobile?: boolean } = {}) {
   const nav = useNavigate();
   const loc = useLocation();
   const ws = useStore((s) => s.workspace)!;
@@ -65,7 +65,7 @@ export function Sidebar() {
   ];
 
   return (
-    <aside className="w-[260px] shrink-0 h-full flex flex-col bg-[var(--sidebar)] border-r select-none">
+    <aside className={cn('shrink-0 h-full flex flex-col bg-[var(--sidebar)] border-r select-none', mobile ? 'w-full' : 'w-[260px]')} style={mobile ? { paddingTop: 'env(safe-area-inset-top)' } : undefined}>
       <div className="h-12 flex items-center gap-1 px-2.5 border-b">
         <Popover width={280} trigger={
           <button className="flex items-center gap-2 rounded-md px-1.5 py-1 hover:bg-[var(--hover)] min-w-0">
@@ -96,12 +96,14 @@ export function Sidebar() {
           )}
         </Popover>
         <div className="flex-1" />
-        <button className="icon-btn" title="Collapse sidebar (Ctrl+\)" onClick={() => { set({ sidebarOpen: false }); localStorage.setItem('proman.sidebar', '0'); }}><PanelLeftClose size={16} /></button>
+        {mobile
+          ? <button className="icon-btn !w-10 !h-10" aria-label="Close navigation" onClick={() => set({ sidebarOpen: false })}><X size={20} /></button>
+          : <button className="icon-btn" title="Collapse sidebar (Ctrl+\)" onClick={() => { set({ sidebarOpen: false }); localStorage.setItem('proman.sidebar', '0'); }}><PanelLeftClose size={16} /></button>}
       </div>
 
       <div className="flex-1 overflow-y-auto px-2 py-2">
         {navItems.map((n) => (
-          <NavLink key={n.to} to={n.to} end={n.end} className={({ isActive }) => cn('flex items-center gap-2.5 rounded-md px-2 py-[5px] text-[13.5px]', isActive ? 'bg-[var(--hover)] font-medium' : 'text-[var(--text)]/90 hover:bg-[var(--hover)]')}>
+          <NavLink key={n.to} to={n.to} end={n.end} className={({ isActive }) => cn('flex items-center gap-2.5 rounded-md px-2 py-[5px] coarse:py-2.5 text-[13.5px] coarse:text-[15px]', isActive ? 'bg-[var(--hover)] font-medium' : 'text-[var(--text)]/90 hover:bg-[var(--hover)]')}>
             <n.icon size={16} className="text-[var(--muted)]" />
             <span className="flex-1">{n.label}</span>
             {!!n.badge && <span className="rounded-full bg-[var(--accent)] text-[var(--accent-fg)] text-[10px] font-semibold px-1.5 min-w-[18px] text-center">{n.badge > 99 ? '99+' : n.badge}</span>}
@@ -202,7 +204,7 @@ function FavRow({ fav }: { fav: Fav }) {
 }
 
 // ------------------------------------------------------------------ tree
-const rowCls = (active: boolean) => cn('group flex items-center gap-1.5 rounded-md pr-1 h-[30px] text-[13.5px] cursor-pointer', active ? 'bg-[color-mix(in_srgb,var(--accent)_12%,transparent)] text-[var(--text)] font-medium' : 'hover:bg-[var(--hover)]');
+const rowCls = (active: boolean) => cn('group flex items-center gap-1.5 rounded-md pr-1 h-[30px] coarse:h-11 text-[13.5px] coarse:text-[15px] cursor-pointer', active ? 'bg-[color-mix(in_srgb,var(--accent)_12%,transparent)] text-[var(--text)] font-medium' : 'hover:bg-[var(--hover)]');
 
 function useOpen(id: string, def = false): [boolean, (v: boolean) => void] {
   const [o, setO] = useState(() => { const v = localStorage.getItem('proman.open.' + id); return v == null ? def : v === '1'; });

@@ -1,5 +1,7 @@
 @import "tailwindcss";
 @custom-variant dark (&:where(.dark, .dark *));
+/* touch screens: bigger rows and targets (`coarse:h-10`) */
+@custom-variant coarse (@media (pointer: coarse));
 
 :root {
   --accent: #6e56cf;
@@ -39,6 +41,8 @@
 }
 
 html, body, #root { height: 100%; }
+#root { height: 100dvh; } /* mobile browser bars: dvh tracks the visible viewport */
+body { overscroll-behavior-y: none; -webkit-tap-highlight-color: transparent; }
 body {
   margin: 0;
   background: var(--bg);
@@ -84,7 +88,7 @@ body {
 .btn-ghost:hover { background: var(--hover); }
 .btn-outline { border: 1px solid var(--border); background: var(--panel); }
 .btn-outline:hover { background: var(--hover); }
-.btn-danger { background: #e5484d; color: white; }
+.btn-danger { background: #ce2c31; color: white; } /* 4.6:1 with white text (WCAG AA) */
 .icon-btn { display: inline-flex; align-items: center; justify-content: center; border-radius: 6px; width: 28px; height: 28px; color: var(--muted); }
 .icon-btn:hover { background: var(--hover); color: var(--text); }
 
@@ -103,6 +107,30 @@ body {
 .animate-slide { animation: slide-in .18s ease-out; }
 @keyframes fade-in { from { opacity: 0; } to { opacity: 1; } }
 .animate-fade { animation: fade-in .15s ease-out; }
+
+/* ---------- Touch & small screens ---------- */
+/* Tailwind v4 applies group-hover only on devices that can hover, so controls revealed on
+   hover would never appear on phones/tablets. Show them permanently there instead. */
+@media (hover: none) {
+  .opacity-0.group-hover\:opacity-100 { opacity: 1; }
+  .hidden.group-hover\:flex:not(.absolute) { display: flex; }
+}
+/* iOS zooms into inputs smaller than 16px. Inputs that set their own text size keep it. */
+@layer utilities {
+  @media (pointer: coarse) and (max-width: 767px) {
+    input:not([class*="text-"]):not([type="checkbox"]):not([type="radio"]),
+    textarea:not([class*="text-"]), select:not([class*="text-"]), .input { font-size: 16px; }
+  }
+}
+.safe-bottom { padding-bottom: calc(8px + env(safe-area-inset-bottom)); }
+@media (max-width: 767px) { .tabbar-offset { bottom: calc(72px + env(safe-area-inset-bottom)); } }
+@keyframes drawer-in { from { transform: translateX(-100%); } to { transform: none; } }
+.animate-drawer { animation: drawer-in .2s ease-out; }
+:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.ProseMirror:focus-visible, input:focus-visible, textarea:focus-visible { outline: none; }
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { animation-duration: .01ms !important; transition-duration: .01ms !important; }
+}
 
 /* ---------- Rich text (TipTap) ---------- */
 .prose-pm { line-height: 1.65; word-wrap: break-word; }

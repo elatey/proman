@@ -1,9 +1,9 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
-import { Hash, Plus, Lock, MessageSquare, Pencil, Trash2, CheckSquare, X, Users, Smile, MoreHorizontal, Reply } from 'lucide-react';
+import { Hash, Plus, Lock, MessageSquare, Pencil, Trash2, CheckSquare, X, Users, Smile, MoreHorizontal, Reply, ChevronLeft } from 'lucide-react';
 import { format, isToday, isYesterday } from 'date-fns';
 import { useStore, getState, memberName } from '../lib/store';
-import { Avatar, Popover, MenuList, Empty, Modal } from '../components/ui';
+import { Avatar, Popover, MenuList, Empty, Modal, useIsMobile } from '../components/ui';
 import { Html, RichEditor } from '../components/RichEditor';
 import { Composer, Reactions, toggleReaction } from '../components/task/ActivityPanel';
 import { cn, stripHtml } from '../lib/utils';
@@ -19,7 +19,9 @@ export default function Chat() {
   const [newCh, setNewCh] = useState(false);
   const list = Object.values(channels).filter((c) => !c.dm && (!c.private || (c.members || []).includes(me) || c.created_by === me)).sort((a, b) => a.name.localeCompare(b.name));
   const dms = Object.values(channels).filter((c) => c.dm && c.members?.includes(me));
-  const current = id ? channels[id] : list[0];
+  const mobile = useIsMobile();
+  // Desktop opens the first channel; phones show the channel list until one is picked.
+  const current = id ? channels[id] : mobile ? undefined : list[0];
   const lastRead = (cid: string) => Number(localStorage.getItem('proman.read.' + cid) || 0);
   const unread = (cid: string) => Object.values(messages).filter((m) => m.channelId === cid && m.author !== me && !m.parentId && new Date(m.created_at || 0).getTime() > lastRead(cid)).length;
   const openDM = (uid: string) => {
@@ -30,7 +32,7 @@ export default function Chat() {
   };
   return (
     <div className="h-full flex">
-      <div className="w-60 shrink-0 border-r bg-[var(--sidebar)] flex flex-col">
+      {(!mobile || !current) && <div className={cn('shrink-0 border-r bg-[var(--sidebar)] flex flex-col', mobile ? 'w-full' : 'w-60')}>
         <div className="h-12 flex items-center px-3 border-b font-semibold">Chat</div>
         <div className="flex-1 overflow-y-auto p-2">
           <div className="flex items-center px-2 py-1 text-[11.5px] font-semibold text-[var(--muted)]">Channels<button className="ml-auto icon-btn !w-5 !h-5" onClick={() => setNewCh(true)}><Plus size={13} /></button></div>
@@ -56,10 +58,10 @@ export default function Chat() {
           })}
           {members.length < 2 && <div className="px-2 text-xs text-[var(--faint)]">Invite teammates to send DMs.</div>}
         </div>
-      </div>
-      <div className="flex-1 min-w-0">
-        {current ? <ChannelView key={current.id} channel={current} /> : <Empty icon={<MessageSquare size={36} />} title="No channels yet" action={<button className="btn btn-primary" onClick={() => setNewCh(true)}><Plus size={14} /> Create channel</button>} />}
-      </div>
+      </div>}
+      {(!mobile || current) && <div className="flex-1 min-w-0">
+        {current ? <ChannelView key={current.id} channel={current} onBack={mobile ? () => nav('/chat') : undefined} /> : <Empty icon={<MessageSquare size={36} />} title="No channels yet" action={<button className="btn btn-primary" onClick={() => setNewCh(true)}><Plus size={14} /> Create channel</button>} />}
+      </div>}
       {newCh && <NewChannel onClose={() => setNewCh(false)} />}
     </div>
   );
@@ -84,7 +86,7 @@ function NewChannel({ onClose }: { onClose: () => void }) {
   );
 }
 
-export function ChannelView({ channel }: { channel: Channel }) {
+export function ChannelView({ channel, onBack }: { channel: Channel; onBack?: () => void }) {
   const messages = useStore((s) => s.data.message);
   const me = useStore((s) => s.user!.id);
   const members = useStore((s) => s.members);
@@ -112,10 +114,11 @@ export function ChannelView({ channel }: { channel: Channel }) {
   return (
     <div className="h-full flex">
       <div className="flex-1 min-w-0 flex flex-col">
-        <div className="h-12 shrink-0 flex items-center gap-2 px-4 border-b bg-[var(--panel)]">
+        <div className="h-12 shrink-0 flex items-center gap-2 px-2 sm:px-4 border-b bg-[var(--panel)]">
+          {onBack && <button className="icon-btn !w-10 !h-10 shrink-0" aria-label="All conversations" onClick={onBack}><ChevronLeft size={20} /></button>}
           {channel.dm ? <Avatar id={other} size={24} /> : channel.private ? <Lock size={15} /> : <Hash size={16} />}
           <span className="font-semibold">{title}</span>
-          {channel.description && <span className="text-xs text-[var(--muted)] truncate">· {channel.description}</span>}
+          {channel.description && <span className="hidden sm:inline text-xs text-[var(--muted)] truncate">· {channel.description}</span>}
           <div className="flex-1" />
           {!channel.dm && (
             <Popover align="end" width={260} trigger={<button className="btn btn-ghost !py-1"><Users size={14} /> {channel.private ? channel.members?.length : members.length}</button>}>
@@ -154,10 +157,10 @@ export function ChannelView({ channel }: { channel: Channel }) {
           })}
           <div ref={bottom} />
         </div>
-        <Composer onSend={(b) => send(b)} placeholder={`Message ${channel.dm ? title : '#' + channel.name}`} allowAssign={false} />
+        <Composer onSend={(b) => send(b)} placeholder={`Message ${channel.dm ? title : '#' + channel.name}`} allowAssign={false} submitLabel="Send" />
       </div>
       {thread && messages[thread] && (
-        <div className="w-[380px] shrink-0 border-l flex flex-col bg-[var(--subtle)]">
+        <div className="fixed inset-0 z-[750] md:static md:z-auto md:w-[380px] shrink-0 border-l flex flex-col bg-[var(--subtle)]">
           <div className="h-12 flex items-center px-4 border-b bg-[var(--panel)] font-semibold text-sm">Thread<button className="ml-auto icon-btn" onClick={() => setThread(null)}><X size={15} /></button></div>
           <div className="flex-1 overflow-y-auto p-3">
             <MessageRow m={messages[thread]} compact={false} channel={channel} inThread />

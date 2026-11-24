@@ -11,7 +11,8 @@ import type { Task } from '../../lib/types';
 import type { ViewProps } from '../../pages/LocationPage';
 
 const ROW = 34;
-const LEFT = 300;
+// Task-name column: narrower on phones so the timeline still gets most of the screen.
+const LEFT = typeof window !== 'undefined' && window.matchMedia('(max-width: 767px)').matches ? 150 : 300;
 
 type Row = { kind: 'group'; key: string; label: string; color: string; count: number } | { kind: 'task'; t: Task; depth: number };
 
@@ -124,7 +125,7 @@ export default function GanttView({ view, tasks, listIds, timeline }: ViewProps 
     <div className="h-full flex flex-col">
       <div className="flex items-center gap-2 px-4 py-1.5 border-b text-[13px]">
         <button className="btn btn-outline !py-1" onClick={() => scroller.current && (scroller.current.scrollLeft = Math.max(0, xOf(today) - 200))}><Crosshair size={13} /> Today</button>
-        <span className="text-xs text-[var(--muted)]">Drag bars to reschedule · drag edges to resize · drag the dot at a bar's end onto another bar to add a dependency</span>
+        <span className="hidden md:inline text-xs text-[var(--muted)]">Drag bars to reschedule · drag edges to resize · drag the dot at a bar's end onto another bar to add a dependency</span>
         <div className="flex-1" />
         <div className="flex rounded-lg border p-0.5">
           {(['day', 'week', 'month'] as const).map((m) => <button key={m} onClick={() => setScale(m)} className={cn('px-2.5 py-0.5 rounded-md capitalize', scale === m ? 'bg-[var(--hover)] font-medium' : 'text-[var(--muted)]')}>{m}</button>)}
@@ -214,7 +215,7 @@ function TaskRow({ t, depth, geom, dayW, nDays, ctx, onBarDown, onLinkDown, onSc
         <StatusIcon status={st} size={13} />
         {milestone && <Diamond size={12} className="text-[var(--muted)]" />}
         <span className={cn('truncate flex-1', isClosed(t) && 'line-through text-[var(--muted)]')}>{t.name}</span>
-        <span className="flex -space-x-1">{(t.assignees || []).slice(0, 2).map((a) => <Avatar key={a} id={a} size={18} ring />)}</span>
+        <span className="hidden sm:flex -space-x-1">{(t.assignees || []).slice(0, 2).map((a) => <Avatar key={a} id={a} size={18} ring />)}</span>
       </div>
       <div className="relative flex-1" onDoubleClick={(e) => { if (geom) return; const r = (e.currentTarget as HTMLElement).getBoundingClientRect(); onSchedule(Math.floor((e.clientX - r.left) / dayW)); }}>
         {!geom && <span className="absolute left-2 top-1/2 -translate-y-1/2 text-[11px] text-[var(--faint)] opacity-0 group-hover:opacity-100 sticky">Double-click the timeline to schedule</span>}

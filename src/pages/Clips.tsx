@@ -45,8 +45,8 @@ export default function Clips() {
   const list = Object.values(clips).sort((a, b) => (b.created_at || '').localeCompare(a.created_at || ''));
   return (
     <div className="h-full overflow-y-auto">
-      <div className="max-w-5xl mx-auto p-8">
-        <div className="flex items-center gap-2"><h1 className="text-2xl font-bold flex-1 flex items-center gap-2"><Video /> Clips</h1>
+      <div className="max-w-5xl mx-auto p-4 sm:p-8">
+        <div className="flex flex-wrap items-center gap-2"><h1 className="text-2xl font-bold flex-1 flex items-center gap-2"><Video /> Clips</h1>
           <button className="btn btn-outline" onClick={() => setMic(!mic)} title="Record microphone">{mic ? <Mic size={14} /> : <MicOff size={14} />}{mic ? 'Mic on' : 'Mic off'}</button>
           {rec ? <button className="btn btn-danger" onClick={stop}><Square size={13} fill="currentColor" /> Stop · {fmtDuration((now - rec.started) / 1000)}</button>
             : <button className="btn btn-primary" onClick={start} disabled={busy}><Circle size={13} fill="currentColor" /> {busy ? 'Saving…' : 'Record screen'}</button>}
