@@ -22,20 +22,20 @@ export default function TableView({ view, tasks, listIds }: ViewProps) {
   const w = (c: string) => widths[c] || colWidth(c) + 20;
   const nameW = widths.__name || 340;
 
-  const resize = (col: string, e: React.MouseEvent) => {
+  const resize = (col: string, e: React.PointerEvent) => {
     e.preventDefault();
     const x0 = e.clientX, w0 = col === '__name' ? nameW : w(col);
     let latest = w0;
-    const move = (ev: MouseEvent) => {
+    const move = (ev: PointerEvent) => {
       latest = Math.max(60, w0 + ev.clientX - x0);
       const th = document.querySelector(`[data-col="${view.id}-${col}"]`) as HTMLElement | null;
       if (th) th.style.width = latest + 'px';
     };
     const up = () => {
-      window.removeEventListener('mousemove', move); window.removeEventListener('mouseup', up);
+      window.removeEventListener('pointermove', move); window.removeEventListener('pointerup', up);
       getState().update('view', view.id, { config: { ...cfg, colWidths: { ...widths, [col]: latest } } });
     };
-    window.addEventListener('mousemove', move); window.addEventListener('mouseup', up);
+    window.addEventListener('pointermove', move); window.addEventListener('pointerup', up);
   };
 
   const footer = (c: string) => {
@@ -56,11 +56,11 @@ export default function TableView({ view, tasks, listIds }: ViewProps) {
           <tr>
             <th className="w-10 border-b border-r sticky left-0 z-30 bg-[var(--subtle)]"><div className="flex justify-center"><Checkbox checked={sel.length > 0 && sel.length === rows.length} onChange={(v) => setSel(v ? rows.map((t) => t.id) : [])} /></div></th>
             <th data-col={`${view.id}-__name`} className="relative border-b border-r text-left font-medium text-[var(--muted)] px-3 py-2 sticky left-10 z-30 bg-[var(--subtle)]" style={{ width: nameW }}>
-              Name<span className="absolute right-0 top-0 bottom-0 w-1.5 cursor-col-resize hover:bg-[var(--accent)]" onMouseDown={(e) => resize('__name', e)} />
+              Name<span className="absolute right-0 top-0 bottom-0 w-1.5 coarse:w-4 cursor-col-resize touch-none hover:bg-[var(--accent)]" onPointerDown={(e) => resize('__name', e)} />
             </th>
             {cols.map((c) => (
               <th key={c} data-col={`${view.id}-${c}`} className="relative border-b border-r text-left font-medium text-[var(--muted)] px-2 py-2 truncate" style={{ width: w(c) }}>
-                {colLabel(c)}<span className="absolute right-0 top-0 bottom-0 w-1.5 cursor-col-resize hover:bg-[var(--accent)]" onMouseDown={(e) => resize(c, e)} />
+                {colLabel(c)}<span className="absolute right-0 top-0 bottom-0 w-1.5 coarse:w-4 cursor-col-resize touch-none hover:bg-[var(--accent)]" onPointerDown={(e) => resize(c, e)} />
               </th>
             ))}
             <th className="border-b" />

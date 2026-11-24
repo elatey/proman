@@ -22,7 +22,7 @@ export default function GanttView({ view, tasks, listIds, timeline }: ViewProps 
   const dayW = scale === 'day' ? 36 : scale === 'week' ? 14 : 5;
   const links = useStore((s) => s.data.link);
   const [collapsed, setCollapsed] = useState<string[]>([]);
-  const [drag, setDrag] = useState<{ id: string; mode: 'move' | 'left' | 'right'; x0: number; dx: number } | null>(null);
+  const [drag, setDrag] = useState<{ id: string; mode: 'move' | 'left' | 'right'; x0: number; dx: number; touch?: boolean } | null>(null);
   const [linkDrag, setLinkDrag] = useState<{ from: string; x: number; y: number; x2: number; y2: number } | null>(null);
   const scroller = useRef<HTMLDivElement>(null);
   const ctx = useContextMenu();
@@ -56,50 +56,55 @@ export default function GanttView({ view, tasks, listIds, timeline }: ViewProps 
   useEffect(() => { if (scroller.current) scroller.current.scrollLeft = Math.max(0, xOf(today) - 200); }, [scale]);
 
   // drag handling
+  // The latest drag state, read on pointerup. Side effects must not run inside a setState
+  // updater: React may call updaters twice (StrictMode), which would move the task twice.
+  const dragRef = useRef(drag);
+  dragRef.current = drag;
   useEffect(() => {
     if (!drag) return;
-    const move = (e: MouseEvent) => setDrag((d) => (d ? { ...d, dx: e.clientX - d.x0 } : d));
-    const up = () => {
-      setDrag((d) => {
-        if (d) {
-          const days = Math.round(d.dx / dayW);
-          const t = getState().data.task[d.id];
-          if (t && days) {
-            const s0 = toDate(t.startDate) || toDate(t.dueDate)!;
-            const e0 = toDate(t.dueDate) || s0;
-            let s1 = s0, e1 = e0;
-            if (d.mode === 'move') { s1 = addDays(s0, days); e1 = addDays(e0, days); }
-            if (d.mode === 'left') s1 = addDays(s0, Math.min(days, differenceInCalendarDays(e0, s0)));
-            if (d.mode === 'right') e1 = addDays(e0, Math.max(days, -differenceInCalendarDays(e0, s0)));
-            getState().updateTask(d.id, { startDate: formatISO(s1), dueDate: formatISO(e1) });
-            if (d.mode !== 'left') rescheduleDependents(d.id, differenceInCalendarDays(e1, e0));
-          }
-        }
-        return null;
-      });
+    const move = (e: PointerEvent) => setDrag((d) => (d ? { ...d, dx: e.clientX - d.x0 } : d));
+    const up = (e: PointerEvent) => {
+      const d0 = dragRef.current;
+      setDrag(null);
+      if (!d0) return;
+      const d = { ...d0, dx: e.clientX - d0.x0 };
+      // Touch has no double-click: a tap (no real movement) on a bar opens the task.
+      if (d.touch && d.mode === 'move' && Math.abs(d.dx) < 6) { getState().openTask(d.id); return; }
+      const days = Math.round(d.dx / dayW);
+      const t = getState().data.task[d.id];
+      if (!t || !days) return;
+      const s0 = toDate(t.startDate) || toDate(t.dueDate)!;
+      const e0 = toDate(t.dueDate) || s0;
+      let s1 = s0, e1 = e0;
+      if (d.mode === 'move') { s1 = addDays(s0, days); e1 = addDays(e0, days); }
+      if (d.mode === 'left') s1 = addDays(s0, Math.min(days, differenceInCalendarDays(e0, s0)));
+      if (d.mode === 'right') e1 = addDays(e0, Math.max(days, -differenceInCalendarDays(e0, s0)));
+      getState().updateTask(d.id, { startDate: formatISO(s1), dueDate: formatISO(e1) });
+      if (d.mode !== 'left') rescheduleDependents(d.id, differenceInCalendarDays(e1, e0));
     };
-    window.addEventListener('mousemove', move);
-    window.addEventListener('mouseup', up);
-    return () => { window.removeEventListener('mousemove', move); window.removeEventListener('mouseup', up); };
+    window.addEventListener('pointermove', move);
+    window.addEventListener('pointerup', up);
+    return () => { window.removeEventListener('pointermove', move); window.removeEventListener('pointerup', up); };
   }, [!!drag, dayW]);
 
+  const linkRef = useRef(linkDrag);
+  linkRef.current = linkDrag;
   useEffect(() => {
     if (!linkDrag) return;
     const rect = () => scroller.current!.getBoundingClientRect();
-    const move = (e: MouseEvent) => setLinkDrag((l) => (l ? { ...l, x2: e.clientX - rect().left + scroller.current!.scrollLeft, y2: e.clientY - rect().top + scroller.current!.scrollTop } : l));
-    const up = (e: MouseEvent) => {
+    const move = (e: PointerEvent) => setLinkDrag((l) => (l ? { ...l, x2: e.clientX - rect().left + scroller.current!.scrollLeft, y2: e.clientY - rect().top + scroller.current!.scrollTop } : l));
+    const up = (e: PointerEvent) => {
       const el = (document.elementFromPoint(e.clientX, e.clientY) as HTMLElement)?.closest('[data-bar]') as HTMLElement | null;
-      setLinkDrag((l) => {
-        if (l && el && el.dataset.bar && el.dataset.bar !== l.from) {
-          const exists = Object.values(getState().data.link).some((x) => x.from === l.from && x.to === el.dataset.bar);
-          if (!exists) { getState().create('link', { from: l.from, to: el.dataset.bar, type: 'blocks' }); getState().toast('Dependency added', 'success'); }
-        }
-        return null;
-      });
+      const l = linkRef.current;
+      setLinkDrag(null);
+      if (l && el && el.dataset.bar && el.dataset.bar !== l.from) {
+        const exists = Object.values(getState().data.link).some((x) => x.from === l.from && x.to === el.dataset.bar);
+        if (!exists) { getState().create('link', { from: l.from, to: el.dataset.bar, type: 'blocks' }); getState().toast('Dependency added', 'success'); }
+      }
     };
-    window.addEventListener('mousemove', move);
-    window.addEventListener('mouseup', up);
-    return () => { window.removeEventListener('mousemove', move); window.removeEventListener('mouseup', up); };
+    window.addEventListener('pointermove', move);
+    window.addEventListener('pointerup', up);
+    return () => { window.removeEventListener('pointermove', move); window.removeEventListener('pointerup', up); };
   }, [!!linkDrag]);
 
   const barGeom = (t: Task) => {
@@ -169,7 +174,7 @@ export default function GanttView({ view, tasks, listIds, timeline }: ViewProps 
               </div>
             ) : (
               <TaskRow key={r.t.id} t={r.t} depth={r.depth} geom={barGeom(r.t)} dayW={dayW} nDays={nDays} ctx={ctx}
-                onBarDown={(mode, e) => { e.stopPropagation(); setDrag({ id: r.t.id, mode, x0: e.clientX, dx: 0 }); }}
+                onBarDown={(mode, e) => { e.stopPropagation(); setDrag({ id: r.t.id, mode, x0: e.clientX, dx: 0, touch: e.pointerType !== 'mouse' }); }}
                 onLinkDown={(e, x, y) => { e.stopPropagation(); setLinkDrag({ from: r.t.id, x, y: headerH + i * ROW + ROW / 2, x2: x, y2: headerH + i * ROW + ROW / 2 }); }}
                 onSchedule={(dayIdx) => getState().updateTask(r.t.id, { startDate: formatISO(addDays(start, dayIdx)), dueDate: formatISO(addDays(start, dayIdx + 2)) })}
                 rowTop={headerH + i * ROW} />
@@ -203,7 +208,7 @@ export default function GanttView({ view, tasks, listIds, timeline }: ViewProps 
 
 function TaskRow({ t, depth, geom, dayW, nDays, ctx, onBarDown, onLinkDown, onSchedule, rowTop }: {
   t: Task; depth: number; geom: { x: number; w: number } | null; dayW: number; nDays: number; ctx: ReturnType<typeof useContextMenu>;
-  onBarDown: (m: 'move' | 'left' | 'right', e: React.MouseEvent) => void; onLinkDown: (e: React.MouseEvent, x: number, y: number) => void; onSchedule: (dayIdx: number) => void; rowTop: number;
+  onBarDown: (m: 'move' | 'left' | 'right', e: React.PointerEvent) => void; onLinkDown: (e: React.PointerEvent, x: number, y: number) => void; onSchedule: (dayIdx: number) => void; rowTop: number;
 }) {
   const st = statusOf(t);
   const color = st?.color || '#8E8C99';
@@ -220,20 +225,21 @@ function TaskRow({ t, depth, geom, dayW, nDays, ctx, onBarDown, onLinkDown, onSc
       <div className="relative flex-1" onDoubleClick={(e) => { if (geom) return; const r = (e.currentTarget as HTMLElement).getBoundingClientRect(); onSchedule(Math.floor((e.clientX - r.left) / dayW)); }}>
         {!geom && <span className="absolute left-2 top-1/2 -translate-y-1/2 text-[11px] text-[var(--faint)] opacity-0 group-hover:opacity-100 sticky">Double-click the timeline to schedule</span>}
         {geom && (milestone ? (
-          <div data-bar={t.id} className="absolute top-1/2 cursor-grab" style={{ left: geom.x + geom.w - dayW / 2 - 9, marginTop: -9 }} onMouseDown={(e) => onBarDown('move', e)} onClick={() => getState().openTask(t.id)}>
+          <div data-bar={t.id} className="absolute top-1/2 cursor-grab" style={{ left: geom.x + geom.w - dayW / 2 - 9, marginTop: -9, touchAction: 'none' }} onPointerDown={(e) => onBarDown('move', e)} onClick={() => getState().openTask(t.id)}>
             <div className="w-[18px] h-[18px] rotate-45 rounded-[3px] shadow" style={{ background: color }} />
             <span className="absolute left-7 top-0 text-[11px] whitespace-nowrap font-medium">{t.name}</span>
           </div>
         ) : (
           <div data-bar={t.id} className="absolute top-[6px] h-[22px] rounded-md shadow-sm cursor-grab active:cursor-grabbing flex items-center overflow-visible"
-            style={{ left: geom.x, width: geom.w, background: alpha(color, 0.25), border: `1px solid ${alpha(color, 0.7)}` }}
-            onMouseDown={(e) => onBarDown('move', e)} onDoubleClick={() => getState().openTask(t.id)}>
+            style={{ left: geom.x, width: geom.w, background: alpha(color, 0.25), border: `1px solid ${alpha(color, 0.7)}`, touchAction: 'none' /* drag the bar, don't scroll the chart */ }}
+            onPointerDown={(e) => onBarDown('move', e)} onDoubleClick={() => getState().openTask(t.id)}>
             <div className="absolute left-0 top-0 bottom-0 rounded-l-md" style={{ width: `${progress}%`, background: alpha(color, 0.55) }} />
             <span className="relative px-2 text-[11.5px] font-medium truncate">{geom.w > 60 ? t.name : ''}</span>
-            <span className="absolute -left-0.5 top-0 bottom-0 w-2 cursor-ew-resize" onMouseDown={(e) => onBarDown('left', e)} />
-            <span className="absolute -right-0.5 top-0 bottom-0 w-2 cursor-ew-resize" onMouseDown={(e) => onBarDown('right', e)} />
-            <span className="absolute -right-4 top-1/2 -translate-y-1/2 w-2.5 h-2.5 rounded-full border-2 bg-[var(--panel)] opacity-0 group-hover:opacity-100 cursor-crosshair" style={{ borderColor: color }}
-              onMouseDown={(e) => onLinkDown(e, geom.x + geom.w + 12, rowTop)} title="Drag to another task to create a dependency" />
+            {/* resize handles: finger-sized on touch screens (they extend past the bar ends) */}
+            <span className="absolute -left-0.5 coarse:-left-3 top-0 bottom-0 w-2 coarse:w-5 cursor-ew-resize" onPointerDown={(e) => onBarDown('left', e)} />
+            <span className="absolute -right-0.5 coarse:-right-3 top-0 bottom-0 w-2 coarse:w-5 cursor-ew-resize" onPointerDown={(e) => onBarDown('right', e)} />
+            <span className="absolute -right-4 coarse:-right-8 top-1/2 -translate-y-1/2 w-2.5 h-2.5 coarse:w-4 coarse:h-4 rounded-full border-2 bg-[var(--panel)] opacity-0 group-hover:opacity-100 cursor-crosshair" style={{ borderColor: color, touchAction: 'none' }}
+              onPointerDown={(e) => onLinkDown(e, geom.x + geom.w + 12, rowTop)} title="Drag to another task to create a dependency" />
             {geom.w <= 60 && <span className="absolute left-full ml-5 text-[11px] whitespace-nowrap text-[var(--muted)]">{t.name}</span>}
           </div>
         ))}

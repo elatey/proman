@@ -122,6 +122,11 @@ body {
     textarea:not([class*="text-"]), select:not([class*="text-"]), .input { font-size: 16px; }
   }
 }
+/* Long-press starts a drag on touch: stop the browser's own text-selection / callout menu there. */
+@media (pointer: coarse) {
+  [draggable="true"] { -webkit-user-select: none; user-select: none; -webkit-touch-callout: none; }
+}
+.touch-dragging, .touch-dragging * { -webkit-user-select: none !important; user-select: none !important; }
 .safe-bottom { padding-bottom: calc(8px + env(safe-area-inset-bottom)); }
 @media (max-width: 767px) { .tabbar-offset { bottom: calc(72px + env(safe-area-inset-bottom)); } }
 @keyframes drawer-in { from { transform: translateX(-100%); } to { transform: none; } }

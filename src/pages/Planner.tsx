@@ -92,13 +92,14 @@ export default function Planner() {
                       className="group absolute left-1 right-1 rounded-md px-1.5 py-1 text-[11.5px] overflow-hidden cursor-pointer z-[5]" style={{ top, height: h, background: alpha(c, 0.18), borderLeft: `3px solid ${c}` }}>
                       <div className="font-medium truncate">{t?.name || b.title}</div>
                       <div className="text-[10px] text-[var(--muted)]">{format(s, 'h:mm')} – {format(e, 'h:mm a')}</div>
-                      <button className="absolute top-0.5 right-0.5 hidden group-hover:block" onClick={(ev) => { ev.stopPropagation(); getState().remove('block', b.id); }}><X size={11} /></button>
-                      <span className="absolute bottom-0 left-0 right-0 h-1.5 cursor-ns-resize" onMouseDown={(ev) => {
+                      <button aria-label="Remove time block" data-no-touch-drag className="absolute top-0.5 right-0.5 hidden group-hover:block coarse:block coarse:p-1" onClick={(ev) => { ev.stopPropagation(); getState().remove('block', b.id); }}><X size={11} /></button>
+                      {/* resize: pointer events so it works with a finger too; taller grab area on touch */}
+                      <span data-no-touch-drag className="absolute bottom-0 left-0 right-0 h-1.5 coarse:h-4 cursor-ns-resize" style={{ touchAction: 'none' }} onPointerDown={(ev) => {
                         ev.stopPropagation(); ev.preventDefault();
                         const y0 = ev.clientY, h0 = differenceInMinutes(e, s);
-                        const mv = (m: MouseEvent) => { const mins = Math.max(15, Math.round((h0 + ((m.clientY - y0) / HOUR) * 60) / 15) * 15); getState().update('block', b.id, { end: addMinutes(s, mins).toISOString() }); };
-                        const upf = () => { window.removeEventListener('mousemove', mv); window.removeEventListener('mouseup', upf); };
-                        window.addEventListener('mousemove', mv); window.addEventListener('mouseup', upf);
+                        const mv = (m: PointerEvent) => { const mins = Math.max(15, Math.round((h0 + ((m.clientY - y0) / HOUR) * 60) / 15) * 15); getState().update('block', b.id, { end: addMinutes(s, mins).toISOString() }); };
+                        const upf = () => { window.removeEventListener('pointermove', mv); window.removeEventListener('pointerup', upf); };
+                        window.addEventListener('pointermove', mv); window.addEventListener('pointerup', upf);
                       }} />
                     </div>
                   );
